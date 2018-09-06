@@ -36,7 +36,7 @@ bool testArcEntity() {
                 arc.basePoint.x = 100.0;
                 arc.basePoint.y = 100.0;
                 arc.basePoint.z = 0.0;
-                arc.radious = 50.0;
+                arc.radius = 50.0;
                 arc.staangle = 0.0;          // 0 degrees
                 arc.endangle = M_PI / 2.0;   // 90 degrees
                 dxfWriter->writeArc(&arc);
@@ -374,7 +374,7 @@ bool testMultipleEntities() {
                     circle.basePoint.x = i * 30.0;
                     circle.basePoint.y = 100.0;
                     circle.basePoint.z = 0.0;
-                    circle.radious = 10.0 + i * 5.0;
+                    circle.radius = 10.0 + i * 5.0;
                     dxfWriter->writeCircle(&circle);
                 }
             }

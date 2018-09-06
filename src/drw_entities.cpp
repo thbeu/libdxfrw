@@ -604,7 +604,7 @@ void DRW_Circle::applyExtrusion(){
 void DRW_Circle::parseCode(int code, dxfReader *reader){
     switch (code) {
     case 40:
-        radious = reader->getDouble();
+        radius = reader->getDouble();
         break;
     default:
         DRW_Point::parseCode(code, reader);
@@ -622,8 +622,8 @@ bool DRW_Circle::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
     basePoint.y = buf->getBitDouble();
     basePoint.z = buf->getBitDouble();
     DRW_DBG("center: "); DRW_DBGPT(basePoint.x, basePoint.y, basePoint.z);
-    radious = buf->getBitDouble();
-    DRW_DBG("\nradius: "); DRW_DBG(radious);
+    radius = buf->getBitDouble();
+    DRW_DBG("\nradius: "); DRW_DBG(radius);
 
     thickness = buf->getThickness(version > DRW::AC1014);
     DRW_DBG(" thickness: "); DRW_DBG(thickness);
@@ -682,8 +682,8 @@ bool DRW_Arc::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
     basePoint.z = buf->getBitDouble();
     DRW_DBG("center point: "); DRW_DBGPT(basePoint.x, basePoint.y, basePoint.z);
 
-    radious = buf->getBitDouble();
-    DRW_DBG("\nradius: "); DRW_DBG(radious);
+    radius = buf->getBitDouble();
+    DRW_DBG("\nradius: "); DRW_DBG(radius);
     thickness = buf->getThickness(version > DRW::AC1014);
     DRW_DBG(" thickness: "); DRW_DBG(thickness);
     extPoint = buf->getExtrusion(version > DRW::AC1014);
@@ -1763,7 +1763,7 @@ void DRW_Hatch::parseCode(int code, dxfReader *reader){
         else if (ellipse) ellipse->secPoint.y = reader->getDouble();
         break;
     case 40:
-        if (arc) arc->radious = reader->getDouble();
+        if (arc) arc->radius = reader->getDouble();
         else if (ellipse) ellipse->ratio = reader->getDouble();
         break;
     case 41:
@@ -1894,7 +1894,7 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
                 } else if (typePath == 2){ //circle arc
                     addArc();
                     arc->basePoint = buf->get2RawDouble();
-                    arc->radious = buf->getBitDouble();
+                    arc->radius = buf->getBitDouble();
                     arc->staangle = buf->getBitDouble();
                     arc->endangle = buf->getBitDouble();
                     arc->isccw = buf->getBit();

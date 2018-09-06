@@ -46,14 +46,14 @@ bool testDXFVersion(DRW::Version version, const char* versionName) {
                 circle.basePoint.x = 50.0;
                 circle.basePoint.y = 50.0;
                 circle.basePoint.z = 0.0;
-                circle.radious = 25.0;
+                circle.radius = 25.0;
                 dxfWriter->writeCircle(&circle);
 
                 DRW_Arc arc;
                 arc.basePoint.x = 100.0;
                 arc.basePoint.y = 100.0;
                 arc.basePoint.z = 0.0;
-                arc.radious = 30.0;
+                arc.radius = 30.0;
                 arc.staangle = 0.0;
                 arc.endangle = M_PI / 2.0;
                 dxfWriter->writeArc(&arc);
@@ -124,7 +124,7 @@ bool testBinaryDXFWrite() {
                 circle.basePoint.x = 50.0;
                 circle.basePoint.y = 50.0;
                 circle.basePoint.z = 0.0;
-                circle.radious = 25.0;
+                circle.radius = 25.0;
                 dxfWriter->writeCircle(&circle);
             }
             dxfRW* dxfWriter;

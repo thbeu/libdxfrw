@@ -45,7 +45,7 @@ bool testBasicBlock() {
                 circle.basePoint.x = 0.0;
                 circle.basePoint.y = 0.0;
                 circle.basePoint.z = 0.0;
-                circle.radious = 10.0;
+                circle.radius = 10.0;
                 dxfWriter->writeCircle(&circle);
 
                 DRW_Line line1;

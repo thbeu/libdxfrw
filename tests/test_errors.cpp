@@ -201,7 +201,7 @@ bool testBoundaryValues() {
                 tinyCircle.basePoint.x = 0.0;
                 tinyCircle.basePoint.y = 0.0;
                 tinyCircle.basePoint.z = 0.0;
-                tinyCircle.radious = 0.001;
+                tinyCircle.radius = 0.001;
                 dxfWriter->writeCircle(&tinyCircle);
 
                 // Very large circle
@@ -209,7 +209,7 @@ bool testBoundaryValues() {
                 hugeCircle.basePoint.x = 0.0;
                 hugeCircle.basePoint.y = 0.0;
                 hugeCircle.basePoint.z = 0.0;
-                hugeCircle.radious = 1e6;
+                hugeCircle.radius = 1e6;
                 dxfWriter->writeCircle(&hugeCircle);
             }
             dxfRW* dxfWriter;

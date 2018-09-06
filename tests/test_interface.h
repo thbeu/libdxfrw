@@ -140,14 +140,14 @@ public:
     virtual void addArc(const DRW_Arc& data) {
         arcCount++;
         std::cout << "Arc added at (" << data.basePoint.x << ", "
-                  << data.basePoint.y << "), radius=" << data.radious << std::endl;
+                  << data.basePoint.y << "), radius=" << data.radius << std::endl;
     }
 
     virtual void addCircle(const DRW_Circle& data) {
         circleCount++;
         lastCircle = data;
         std::cout << "Circle added at (" << data.basePoint.x << ", "
-                  << data.basePoint.y << "), radius=" << data.radious << std::endl;
+                  << data.basePoint.y << "), radius=" << data.radius << std::endl;
     }
 
     virtual void addEllipse(const DRW_Ellipse& data) {

@@ -93,7 +93,7 @@ bool testWriteBasicDXF() {
             circle.basePoint.x = 50.0;
             circle.basePoint.y = 50.0;
             circle.basePoint.z = 0.0;
-            circle.radious = 25.0;
+            circle.radius = 25.0;
             dxfWriter->writeCircle(&circle);
         }
 

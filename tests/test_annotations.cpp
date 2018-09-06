@@ -327,7 +327,7 @@ bool testHatchWithArcBoundary() {
                 // Arc from (-50,0) to (50,0) going through top
                 DRW_Arc* arc = new DRW_Arc();
                 arc->basePoint = DRW_Coord(0.0, 0.0, 0.0);  // Center
-                arc->radious = 50.0;
+                arc->radius = 50.0;
                 arc->staangle = 0.0;
                 arc->endangle = M_PI;  // 180 degrees
                 loop->objlist.push_back(arc);

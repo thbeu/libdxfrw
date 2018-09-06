@@ -49,7 +49,7 @@ bool testEntityColor() {
                 // Green circle (color index 3)
                 DRW_Circle circle;
                 circle.basePoint = DRW_Coord(50.0, 50.0, 0.0);
-                circle.radious = 25.0;
+                circle.radius = 25.0;
                 circle.color = 3;  // Green
                 dxfWriter->writeCircle(&circle);
 
@@ -134,7 +134,7 @@ bool testEntityLayer() {
                 // Circle on LAYER2
                 DRW_Circle circle;
                 circle.basePoint = DRW_Coord(50.0, 50.0, 0.0);
-                circle.radious = 20.0;
+                circle.radius = 20.0;
                 circle.layer = "LAYER2";
                 dxfWriter->writeCircle(&circle);
 
@@ -417,7 +417,7 @@ bool testCircleRadius() {
             virtual void writeEntities() {
                 DRW_Circle circle;
                 circle.basePoint = DRW_Coord(cx, cy, 0.0);
-                circle.radious = radius;
+                circle.radius = radius;
                 dxfWriter->writeCircle(&circle);
             }
             dxfRW* dxfWriter;
@@ -444,9 +444,9 @@ bool testCircleRadius() {
             return false;
         }
 
-        if (!approxEqual(reader.lastCircle.radious, testRadius)) {
+        if (!approxEqual(reader.lastCircle.radius, testRadius)) {
             std::cout << "✗ Radius mismatch: expected " << testRadius
-                      << ", got " << reader.lastCircle.radious << std::endl;
+                      << ", got " << reader.lastCircle.radius << std::endl;
             std::remove(filename);
             return false;
         }
