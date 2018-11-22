@@ -98,6 +98,7 @@ bool dxfRW::read(DRW_Interface *interface_, bool ext){
 
     isOk = processDxf();
     filestr.close();
+    version = static_cast<DRW::Version>(reader->getVersion());
     delete reader;
     reader = NULL;
     return isOk;
@@ -2793,4 +2794,8 @@ std::string dxfRW::toHexStr(int n){
     Convert << std::uppercase << std::hex << n;
     return Convert.str();
 #endif
+}
+
+DRW::Version dxfRW::getVersion() const {
+    return version;
 }
