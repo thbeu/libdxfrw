@@ -215,7 +215,13 @@ void dwgCompressor::decompress18(duint8 *cbuf, duint8 *dbuf, duint32 csize, duin
         for (duint32 i=0, j= rpos - compOffset -1; i < compBytes; i++) {
             bufD[rpos++] = bufD[j++];
         }
-        //copy "uncompressed data"
+        //copy "uncompressed data", if size allows
+        if ( sizeD < rpos + litCount )
+        {
+            DRW_DBG("WARNING dwgCompressor::decompress, bad litCount size, Cpos: ");
+            DRW_DBG(pos);DRW_DBG(", Dpos: ");DRW_DBG(rpos);DRW_DBG("\n");
+            litCount = sizeD - rpos;
+        }
         for (duint32 i=0; i < litCount; i++) {
             if (pos >= csize || rpos >= sizeD) break;
             bufD[rpos++] = bufC[pos++];
