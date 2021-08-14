@@ -35,8 +35,9 @@ public:
 
 class dwgFileStream: public dwgBasicStream{
 public:
-    dwgFileStream(std::ifstream *s){
-        stream =s;
+    explicit dwgFileStream(std::ifstream *s)
+        :stream{s}
+    {
         stream->seekg (0, std::ios::end);
         sz = stream->tellg();
         stream->seekg(0, std::ios_base::beg);
