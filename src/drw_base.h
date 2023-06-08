@@ -153,6 +153,7 @@ enum TransparencyCodes {
 class DRW_Coord {
 public:
     DRW_Coord():x(0), y(0),z(0) {}
+    DRW_Coord(double ix, double iy): x(ix), y(iy),z(0){}
     DRW_Coord(double ix, double iy, double iz): x(ix), y(iy),z(iz){}
 
      DRW_Coord& operator = (const DRW_Coord& data) {
