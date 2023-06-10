@@ -140,6 +140,7 @@ private:
     bool writingBlock;
     int elParts;  /*!< parts munber when convert ellipse to polyline */
     std::unordered_map<std::string,int> blockMap;
+    std::unordered_map<std::string,int> textStyleMap;
     std::vector<DRW_ImageDef*> imageDef;  /*!< imageDef list */
 
     int currHandle;
