@@ -74,7 +74,7 @@ namespace DRW {
 //        TABLE,
         TEXT,
 //        TOLERANCE,
-        TRACE,
+        DXF_TRACE,
         UNDERLAY,
         VERTEX,
         VIEWPORT,
@@ -402,7 +402,7 @@ class DRW_Trace : public DRW_Line {
     SETENTFRIENDS
 public:
     DRW_Trace() {
-        eType = DRW::TRACE;
+        eType = DRW::DXF_TRACE;
         thirdPoint.z = 0;
         fourPoint.z = 0;
     }
