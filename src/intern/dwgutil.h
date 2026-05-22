@@ -32,7 +32,7 @@ public:
     dwgCompressor(){}
     ~dwgCompressor(){}
 
-    void decompress18(duint8 *cbuf, duint8 *dbuf, duint32 csize, duint32 dsize);
+    bool decompress18(duint8 *cbuf, duint8 *dbuf, duint32 csize, duint32 dsize);
     static void decrypt18Hdr(duint8 *buf, duint32 size, duint32 offset);
 //    static void decrypt18Data(duint8 *buf, duint32 size, duint32 offset);
     static void decompress21(duint8 *cbuf, duint8 *dbuf, duint32 csize, duint32 dsize);

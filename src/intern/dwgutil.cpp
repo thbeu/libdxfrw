@@ -138,7 +138,7 @@ duint32 dwgCompressor::litLength18(){
     return cont;
 }
 
-void dwgCompressor::decompress18(duint8 *cbuf, duint8 *dbuf, duint32 csize, duint32 dsize){
+bool dwgCompressor::decompress18(duint8 *cbuf, duint8 *dbuf, duint32 csize, duint32 dsize){
     bufC = cbuf;
     bufD = dbuf;
     sizeC = csize -2;
@@ -194,23 +194,22 @@ void dwgCompressor::decompress18(duint8 *cbuf, duint8 *dbuf, duint32 csize, duin
         } else if (oc == 0x11){
             DRW_DBG("dwgCompressor::decompress, end of input stream, Cpos: ");
             DRW_DBG(pos);DRW_DBG(", Dpos: ");DRW_DBG(rpos);DRW_DBG("\n");
-            return; //end of input stream
+            return true; //end of input stream
         } else { //ll < 0x10
             DRW_DBG("WARNING dwgCompressor::decompress, failed, illegal char, Cpos: ");
             DRW_DBG(pos);DRW_DBG(", Dpos: ");DRW_DBG(rpos);DRW_DBG("\n");
-            return; //fails, not valid
+            return false; //fails, not valid
         }
         //copy "compressed data"
-        duint32 remaining = (litCount + rpos <= sizeD) ? sizeD - litCount - rpos : 0;
-        if (remaining < compBytes){
-            compBytes = remaining;
+        if (sizeD < rpos + compBytes) {
             DRW_DBG("WARNING dwgCompressor::decompress, bad compBytes size, Cpos: ");
             DRW_DBG(pos);DRW_DBG(", Dpos: ");DRW_DBG(rpos);DRW_DBG("\n");
+            compBytes = sizeD - rpos;
         }
         if (compOffset >= rpos) {
             DRW_DBG("WARNING dwgCompressor::decompress, bad compOffset, Cpos: ");
             DRW_DBG(pos);DRW_DBG(", Dpos: ");DRW_DBG(rpos);DRW_DBG("\n");
-            return;
+            return false;
         }
         for (duint32 i=0, j= rpos - compOffset -1; i < compBytes; i++) {
             bufD[rpos++] = bufD[j++];
@@ -228,6 +227,7 @@ void dwgCompressor::decompress18(duint8 *cbuf, duint8 *dbuf, duint32 csize, duin
         }
     }
     DRW_DBG("WARNING dwgCompressor::decompress, bad out, Cpos: ");DRW_DBG(pos);DRW_DBG(", Dpos: ");DRW_DBG(rpos);DRW_DBG("\n");
+    return false;
 }
 
 

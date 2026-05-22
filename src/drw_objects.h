@@ -79,9 +79,14 @@ public:
         flags = e.flags;
         numReactors = e.numReactors;
         xDictFlag = e.xDictFlag;
-        curr = e.curr;
+        curr = NULL;
         for (std::vector<DRW_Variant*>::const_iterator it=e.extData.begin(); it!=e.extData.end(); ++it){
-            extData.push_back(new DRW_Variant(*(*it)));
+            DRW_Variant *src = *it;
+            DRW_Variant *dst = new DRW_Variant(*src);
+            extData.push_back(dst);
+            if (src == e.curr) {
+                curr = dst;
+            }
         }
     }
 
@@ -94,6 +99,7 @@ protected:
         for (std::vector<DRW_Variant*>::iterator it=extData.begin(); it!=extData.end(); ++it)
             delete *it;
         extData.clear();
+        curr = NULL;
     }
 
 public:
