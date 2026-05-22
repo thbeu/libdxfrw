@@ -1794,7 +1794,7 @@ void DRW_Hatch::parseCode(int code, dxfReader *reader){
     case 92:
         loop = new DRW_HatchLoop(reader->getInt32());
         looplist.push_back(loop);
-        if (reader->getInt32() & 2) {
+        if (loop->type & 2) {
             ispol = true;
             clearEntities();
             pline = new DRW_LWPolyline;
