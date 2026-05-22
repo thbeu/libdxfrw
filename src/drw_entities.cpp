@@ -15,6 +15,7 @@
 #include "intern/dxfreader.h"
 #include "intern/dwgbuffer.h"
 #include "intern/drw_dbg.h"
+#include "intern/drw_reserve.h"
 
 
 //! Calculate arbitary axis
@@ -1167,7 +1168,7 @@ void DRW_LWPolyline::parseCode(int code, dxfReader *reader){
         break;
     case 90:
         vertexnum = reader->getInt32();
-        vertlist.reserve(vertexnum);
+        DRW::reserve(vertlist, vertexnum);
         break;
     case 210:
         haveExtrusion = true;
@@ -1202,7 +1203,9 @@ bool DRW_LWPolyline::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
     if (flags & 1)
         extPoint = buf->getExtrusion(false);
     vertexnum = buf->getBitLong();
-    vertlist.reserve(vertexnum);
+    if (!DRW::reserve(vertlist, vertexnum)) {
+        return false;
+    }
     unsigned int bulgesnum = 0;
     if (flags & 16)
         bulgesnum = buf->getBitLong();
@@ -1791,7 +1794,7 @@ void DRW_Hatch::parseCode(int code, dxfReader *reader){
         break;
     case 91:
         loopsnum = reader->getInt32();
-        looplist.reserve(loopsnum);
+        DRW::reserve(looplist, loopsnum);
         break;
     case 92:
         loop = new DRW_HatchLoop(reader->getInt32());
@@ -1910,8 +1913,12 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
                     // > numctlpts BL 96 number of control points
                     spline->nknots = buf->getBitLong();
                     spline->ncontrol = buf->getBitLong();
-                    spline->knotslist.reserve(spline->nknots);
-                    spline->controllist.reserve(spline->ncontrol);
+                    if (!DRW::reserve(spline->knotslist, spline->nknots)) {
+                        return false;
+                    }
+                    if (!DRW::reserve(spline->controllist, spline->ncontrol)) {
+                        return false;
+                    }
                     for (dint32 j = 0; j < spline->nknots;++j){
                         spline->knotslist.push_back (buf->getBitDouble());
                     }
@@ -1924,7 +1931,9 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
                     }
                     if (version > DRW::AC1021) { //2010+
                         spline->nfit = buf->getBitLong();
-                        spline->fitlist.reserve(spline->nfit);
+                        if (!DRW::reserve(spline->fitlist, spline->nfit)) {
+                            return false;
+                        }
                         for (dint32 j = 0; j < spline->nfit;++j){
                             // Fitpoint 2RD 11
                             DRW_Coord* crd = new DRW_Coord(buf->get2RawDouble());
@@ -2149,11 +2158,15 @@ bool DRW_Spline::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
         return false; //RLZ: from doc only 1 or 2 are ok ?
     }
 
-    knotslist.reserve(nknots);
+    if (!DRW::reserve(knotslist, nknots)) {
+        return false;
+    }
     for (dint32 i= 0; i<nknots; ++i){
         knotslist.push_back (buf->getBitDouble());
     }
-    controllist.reserve(ncontrol);
+    if (!DRW::reserve(controllist, ncontrol)) {
+        return false;
+    }
     for (dint32 i= 0; i<ncontrol; ++i){
         DRW_Coord* crd = new DRW_Coord(buf->get3BitDouble());
         controllist.push_back(crd);
@@ -2161,7 +2174,9 @@ bool DRW_Spline::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
             DRW_DBG("\n w: "); DRW_DBG(buf->getBitDouble()); //RLZ Warning: D (BD or RD)
         }
     }
-    fitlist.reserve(nfit);
+    if (!DRW::reserve(fitlist, nfit)) {
+        return false;
+    }
     for (dint32 i= 0; i<nfit; ++i){
         DRW_Coord* crd = new DRW_Coord(buf->get3BitDouble());
         fitlist.push_back (crd);

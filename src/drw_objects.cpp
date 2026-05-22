@@ -17,6 +17,7 @@
 #include "intern/dxfwriter.h"
 #include "intern/dwgbuffer.h"
 #include "intern/drw_dbg.h"
+#include "intern/drw_reserve.h"
 #include "intern/dwgutil.h"
 
 //! Base class for tables entries
@@ -439,7 +440,8 @@ void DRW_LType::parseCode(int code, dxfReader *reader){
         break;
     case 73:
         size = reader->getInt32();
-        path.reserve(size);
+        path.clear();
+        DRW::reserve(path, size);
         break;
     case 40:
         length = reader->getDouble();
@@ -713,7 +715,9 @@ bool DRW_Block_Record::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs
     DRW_DBG("flags: "); DRW_DBG(flags); DRW_DBG(", ");
     if (version > DRW::AC1015) {//2004+ fails in 2007
         objectCount = buf->getBitLong(); //Number of objects owned by this block
-        entMap.reserve(objectCount);
+        if (!DRW::reserve(entMap, objectCount)) {
+            return false;
+        }
     }
     basePoint.x = buf->getBitDouble();
     basePoint.y = buf->getBitDouble();
