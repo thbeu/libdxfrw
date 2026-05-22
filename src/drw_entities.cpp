@@ -1385,6 +1385,7 @@ bool DRW_Text::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
         height = buf->getBitDouble(); /* Height BD 40 */
         widthscale = buf->getBitDouble(); /* Width factor BD 41 */
     }
+    angle *= ARAD;
     DRW_DBG("thickness: "); DRW_DBG(thickness); DRW_DBG(", Oblique ang: "); DRW_DBG(oblique); DRW_DBG(", Width: ");
     DRW_DBG(widthscale); DRW_DBG(", Rotation: "); DRW_DBG(angle); DRW_DBG(", height: "); DRW_DBG(height); DRW_DBG("\n");
     text = sBuf->getVariableText(version, false); /* Text value TV 1 */
@@ -1432,6 +1433,10 @@ void DRW_MText::parseCode(int code, dxfReader *reader){
     case 44:
         interlin = reader->getDouble();
         break;
+    case 50:
+        haveXAxis = false;
+        angle = reader->getDouble();
+        break;
     default:
         DRW_Text::parseCode(code, reader);
         break;
@@ -1453,6 +1458,7 @@ bool DRW_MText::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
     DRW_DBG("Insertion: "); DRW_DBGPT(basePoint.x, basePoint.y, basePoint.z); DRW_DBG("\n");
     extPoint = buf->get3BitDouble(); /* Extrusion 3BD 210 Undocumented; */
     secPoint = buf->get3BitDouble(); /* X-axis dir 3BD 11 */
+    haveXAxis = true;
     updateAngle();
     widthscale = buf->getBitDouble(); /* Rect width BD 41 */
     if (version > DRW::AC1018) {//2007+
@@ -1515,7 +1521,7 @@ bool DRW_MText::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
 
 void DRW_MText::updateAngle(){
     if (haveXAxis) {
-            angle = atan2(secPoint.y, secPoint.x)*180/M_PI;
+        angle = atan2(secPoint.y, secPoint.x) * ARAD;
     }
 }
 
