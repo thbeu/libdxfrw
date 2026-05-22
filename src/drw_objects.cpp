@@ -1729,7 +1729,9 @@ bool DRW_Textstyle::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t
     name = sBuf->getVariableText(version, false);
     DRW_DBG("text style name: "); DRW_DBG(name.c_str()); DRW_DBG("\n");
     flags |= buf->getBit()<< 6;//style are referenced for a entity, style code 70, bit 7 (64)
-    /*std::int16_t xrefindex =*/ buf->getBitShort();
+    if (version < DRW::AC1021) {//2004-
+        /*std::int16_t xrefindex =*/ buf->getBitShort();
+    }
     flags |= buf->getBit() << 4; //is refx dependent, style code 70, bit 5 (16)
     flags |= buf->getBit() << 2; //vertical text, stile code 70, bit 3 (4)
     flags |= buf->getBit(); //if is a shape file instead of text, style code 70, bit 1 (1)
@@ -2630,7 +2632,9 @@ bool DRW_AppId::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
     name = sBuf->getVariableText(version, false);
     DRW_DBG("appId name: "); DRW_DBG(name); DRW_DBG("\n");
     flags |= buf->getBit()<< 6;// code 70, bit 7 (64)
-    /*std::int16_t xrefindex =*/ buf->getBitShort();
+    if (version < DRW::AC1021) {//2004-
+        /*std::int16_t xrefindex =*/ buf->getBitShort();
+    }
     flags |= buf->getBit() << 4; //is refx dependent, style code 70, bit 5 (16)
     std::uint8_t unknown = buf->getRawChar8(); // unknown code 71
     DRW_DBG("unknown code 71: "); DRW_DBG(unknown); DRW_DBG("\n");
