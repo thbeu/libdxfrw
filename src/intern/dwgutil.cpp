@@ -138,7 +138,7 @@ duint32 dwgCompressor::litLength18(){
     return cont;
 }
 
-bool dwgCompressor::decompress18(duint8 *cbuf, duint8 *dbuf, duint32 csize, duint32 dsize){
+bool dwgCompressor::decompress18(duint8 *cbuf, duint8 *dbuf, duint64 csize, duint64 dsize){
     bufC = cbuf;
     bufD = dbuf;
     sizeC = csize -2;
@@ -231,7 +231,7 @@ bool dwgCompressor::decompress18(duint8 *cbuf, duint8 *dbuf, duint32 csize, duin
 }
 
 
-void dwgCompressor::decrypt18Hdr(duint8 *buf, duint32 size, duint32 offset){
+void dwgCompressor::decrypt18Hdr(duint8 *buf, duint64 size, duint64 offset){
     duint8 max = size / 4;
     duint32 secMask = 0x4164536b ^ offset;
     duint32* pHdr = (duint32*)buf;
@@ -268,7 +268,7 @@ duint32 dwgCompressor::litLength21(duint8 *cbuf, duint8 oc, duint32 *si){
     return length;
 }
 
-void dwgCompressor::decompress21(duint8 *cbuf, duint8 *dbuf, duint32 csize, duint32 dsize){
+void dwgCompressor::decompress21(duint8 *cbuf, duint8 *dbuf, duint64 csize, duint64 dsize){
     duint32 srcIndex=0;
     duint32 dstIndex=0;
     duint32 length=0;
