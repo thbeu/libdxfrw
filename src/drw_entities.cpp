@@ -5455,14 +5455,17 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
             // 72 clear the closed bit 73 had just set, leaving the boundary open
             // so RS_Hatch::validate() rejected the area.
             break;
-        } else if (reader->getInt32() == 1){ //line
-            addLine();
-        } else if (reader->getInt32() == 2){ //arc
-            addArc();
-        } else if (reader->getInt32() == 3){ //elliptic arc
-            addEllipse();
-        } else if (reader->getInt32() == 4){ //spline
-            addSpline();
+        } else {
+            int edgeType = reader->getInt32();
+            if (edgeType == 1){ //line
+                addLine();
+            } else if (edgeType == 2){ //arc
+                addArc();
+            } else if (edgeType == 3){ //elliptic arc
+                addEllipse();
+            } else if (edgeType == 4){ //spline
+                addSpline();
+            }
         }
         break;
     case 10:
@@ -5662,7 +5665,7 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     case 92:
         loop = std::make_shared<DRW_HatchLoop>(reader->getInt32());
         looplist.push_back(loop);
-        if (reader->getInt32() & 2) {
+        if (loop->type & 2) {
             ispol = true;
             clearEntities();
             pline = std::make_shared<DRW_LWPolyline>();
@@ -5823,7 +5826,7 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
     //read loops
     for (std::int32_t i = 0 ; i < loopsnum; ++i){
         loop = std::make_shared<DRW_HatchLoop>(buf->getBitLong());
-        havePixelSize |= loop->type & 4;
+        havePixelSize |= (loop->type & 4) != 0;
         DRW_DBG(" loop["); DRW_DBG(i); DRW_DBG("] type: "); DRW_DBG(loop->type);
         if (!(loop->type & 2)){ //Not polyline
             std::int32_t numPathSeg = buf->getBitLong();
