@@ -146,6 +146,7 @@ private:
     bool processUnderlay(const std::string& kind);
     bool processHatch();
     bool processSpline();
+    bool processHelix();
     bool process3dface();
     bool processViewport();
     bool processImage();
