@@ -1936,7 +1936,7 @@ bool DRW_Insert::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
             DRW_DBG("second attrib Handle: "); DRW_DBGHL(attH.code, attH.size, attH.ref); DRW_DBG("\n");
             attribHandles.push_back(attH);
         } else {
-            for (duint8 i=0; i< objCount; ++i){
+            for (dint32 i=0; i< objCount; ++i){
                 dwgHandle attH = buf->getHandle(); /* H 2 BLOCK HEADER (hard pointer) */
                 DRW_DBG("attrib Handle #"); DRW_DBG(i); DRW_DBG(": "); DRW_DBGHL(attH.code, attH.size, attH.ref); DRW_DBG("\n");
                 attribHandles.push_back(attH);
@@ -3202,14 +3202,17 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     case 72:        /*edge type*/
         if (ispol){ //if is polyline is a as_bulge flag
             break;
-        } else if (reader->getInt32() == 1){ //line
-            addLine();
-        } else if (reader->getInt32() == 2){ //arc
-            addArc();
-        } else if (reader->getInt32() == 3){ //elliptic arc
-            addEllipse();
-        } else if (reader->getInt32() == 4){ //spline
-            addSpline();
+        } else {
+            int edgeType = reader->getInt32();
+            if (edgeType == 1){ //line
+                addLine();
+            } else if (edgeType == 2){ //arc
+                addArc();
+            } else if (edgeType == 3){ //elliptic arc
+                addEllipse();
+            } else if (edgeType == 4){ //spline
+                addSpline();
+            }
         }
         break;
     case 10:
@@ -3350,7 +3353,7 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     case 92:
         loop = std::make_shared<DRW_HatchLoop>(reader->getInt32());
         looplist.push_back(loop);
-        if (reader->getInt32() & 2) {
+        if (loop->type & 2) {
             ispol = true;
             clearEntities();
             pline = std::make_shared<DRW_LWPolyline>();
@@ -3482,7 +3485,7 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
     //read loops
     for (dint32 i = 0 ; i < loopsnum; ++i){
         loop = std::make_shared<DRW_HatchLoop>(buf->getBitLong());
-        havePixelSize |= loop->type & 4;
+        havePixelSize |= (loop->type & 4) != 0;
         DRW_DBG(" loop["); DRW_DBG(i); DRW_DBG("] type: "); DRW_DBG(loop->type);
         if (!(loop->type & 2)){ //Not polyline
             dint32 numPathSeg = buf->getBitLong();
