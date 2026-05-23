@@ -1536,6 +1536,8 @@ bool dxfRW::writeHatch(DRW_Hatch *ent){
 
 bool dxfRW::writeLeader(DRW_Leader *ent){
     if (version > DRW::AC1009) {
+        if (ent->vertexlist.size() < 2)
+            return true; // skip malformed LEADER without enough vertices
         writer->writeString(0, "LEADER");
         writeEntity(ent);
         writer->writeString(100, "AcDbLeader");
