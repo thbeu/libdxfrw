@@ -320,7 +320,7 @@ protected:
     virtual bool encodeDwg(DRW::Version version, dwgBufferW *buf, duint32 bs=0) override;
 
 public:
-    double radious;                 /*!< radius, code 40 */
+    double radius;                 /*!< radius, code 40 */
 };
 
 //! Class to handle arc entity
@@ -341,7 +341,7 @@ public:
     //! center point in OCS
     const DRW_Coord & center() { return basePoint; }
     //! the radius of the circle
-    double radius() { return radious; }
+    double getRadius() { return radius; }
     //! start angle in radians
     double startAngle() { return staangle; }
     //! end angle in radians
