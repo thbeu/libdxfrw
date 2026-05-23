@@ -2556,8 +2556,8 @@ DRW_Attrib& DRW_Attrib::operator=(const DRW_Attrib& o) {
     }
     return *this;
 }
-DRW_Attrib::DRW_Attrib(DRW_Attrib&&) noexcept = default;
-DRW_Attrib& DRW_Attrib::operator=(DRW_Attrib&&) noexcept = default;
+DRW_Attrib::DRW_Attrib(DRW_Attrib&&) = default;
+DRW_Attrib& DRW_Attrib::operator=(DRW_Attrib&&) = default;
 
 bool DRW_Attrib::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     // Multi-line ATTRIB (R2018+, ODA spec §20.4.4): an embedded MTEXT object
