@@ -611,7 +611,7 @@ bool dwgReaderR11::readEntityR11(DRW_Interface& intfa) {
         case R11_CIRCLE: {
             DRW_Circle e;
             e.basePoint = fileBuf->get2RawDouble();
-            e.radious = rd();
+            e.radius = rd();
             e.basePoint.z = elevation;
             e.thickness = thickness;
             applyAttrs(e);
@@ -620,7 +620,7 @@ bool dwgReaderR11::readEntityR11(DRW_Interface& intfa) {
         case R11_ARC: {
             DRW_Arc e;
             e.basePoint = fileBuf->get2RawDouble();
-            e.radious = rd();
+            e.radius = rd();
             e.staangle = rd();
             e.endangle = rd();
             e.basePoint.z = elevation;

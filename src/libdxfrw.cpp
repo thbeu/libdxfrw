@@ -988,7 +988,7 @@ bool dxfRW::writeCircle(DRW_Circle *ent) {
     if (ent->basePoint.z != 0.0) {
         writer->writeDouble(30, ent->basePoint.z);
     }
-    writer->writeDouble(40, ent->radious);
+    writer->writeDouble(40, ent->radius);
     // Extrusion (AcDbCircle subclass) — default 0,0,1. Omitting it flattened
     // non-Z-up circles on DXF export; the reader (DRW_Point::parseCode) already
     // consumes 210/220/230, so this completes the round trip.
@@ -1017,7 +1017,7 @@ bool dxfRW::writeArc(DRW_Arc *ent) {
     if (ent->basePoint.z != 0.0) {
         writer->writeDouble(30, ent->basePoint.z);
     }
-    writer->writeDouble(40, ent->radious);
+    writer->writeDouble(40, ent->radius);
     // Extrusion belongs to the AcDbCircle subclass, so it must precede the
     // AcDbArc marker. Default 0,0,1; reader consumes 210/220/230.
     DRW_Coord crd = ent->extPoint;
@@ -1426,7 +1426,7 @@ bool dxfRW::writeHatch(DRW_Hatch *ent){
                         DRW_Arc* a = (DRW_Arc*)loop->objlist.at(j).get();
                         writer->writeDouble(10, a->basePoint.x);
                         writer->writeDouble(20, a->basePoint.y);
-                        writer->writeDouble(40, a->radious);
+                        writer->writeDouble(40, a->radius);
                         writer->writeDouble(50, a->staangle*ARAD);
                         writer->writeDouble(51, a->endangle*ARAD);
                         writer->writeInt16(73, a->isccw);
