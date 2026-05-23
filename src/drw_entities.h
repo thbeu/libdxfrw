@@ -844,8 +844,8 @@ public:
     ~DRW_Attrib() override;
     DRW_Attrib(const DRW_Attrib&);
     DRW_Attrib& operator=(const DRW_Attrib&);
-    DRW_Attrib(DRW_Attrib&&) noexcept;
-    DRW_Attrib& operator=(DRW_Attrib&&) noexcept;
+    DRW_Attrib(DRW_Attrib&&);
+    DRW_Attrib& operator=(DRW_Attrib&&);
 
 protected:
     bool parseCode(int code, const std::unique_ptr<dxfReader>& reader) override;
