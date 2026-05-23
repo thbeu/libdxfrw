@@ -151,6 +151,31 @@ protected:
 
     void setCodePage(const std::string &c){decoder.setCodePage(c, false);}
     std::string getCodePage(){ return decoder.getCodePage();}
+    /** Map a DWG header codepage ID to the corresponding ANSI codepage string
+     *  and update the decoder.  IDs follow the Open Design Specification. */
+    void setCodePageNum(duint16 cp){
+        const char* name = nullptr;
+        switch (cp) {
+        case 28: name = "ANSI_1250"; break; // Central European
+        case 29: name = "ANSI_1251"; break; // Cyrillic
+        case 30: name = "ANSI_1252"; break; // Western European
+        case 31: name = "ANSI_936";  break; // GB2312 (Simplified Chinese)
+        case 32: name = "ANSI_1253"; break; // Greek
+        case 33: name = "ANSI_1254"; break; // Turkish
+        case 34: name = "ANSI_1255"; break; // Hebrew
+        case 35: name = "ANSI_1256"; break; // Arabic
+        case 36: name = "ANSI_1257"; break; // Baltic
+        case 37: name = "ANSI_874";  break; // Thai
+        case 38: name = "ANSI_932";  break; // Japanese
+        case 39: name = "ANSI_936";  break; // Simplified Chinese (GBK)
+        case 40: name = "ANSI_949";  break; // Korean
+        case 41: name = "ANSI_950";  break; // Traditional Chinese
+        case 44: name = "ANSI_1258"; break; // Vietnamese
+        default: break;
+        }
+        if (name)
+            decoder.setCodePage(name, false);
+    }
     bool readDwgHeader(DRW_Header& hdr, dwgBuffer *buf, dwgBuffer *hBuf);
     bool readDwgHandles(dwgBuffer *dbuf, duint64 offset, duint64 size);
     bool readDwgTables(DRW_Header& hdr, dwgBuffer *dbuf);
