@@ -3550,6 +3550,8 @@ bool dxfRW::processEntities(bool isblock) {
             processed = processHatch();
         } else if (nextentity == "SPLINE") {
             processed = processSpline();
+        } else if (nextentity == "HELIX") {
+            processed = processHelix();
         } else if (nextentity == "3DFACE") {
             processed = process3dface();
         } else if (nextentity == "MESH") {
@@ -4124,6 +4126,40 @@ bool dxfRW::processSpline() {
         if (!sp.parseCode(code, reader)) {
             return setError( DRW::BAD_CODE_PARSED);
         }
+    }
+
+    return setError(DRW::BAD_READ_ENTITIES);
+}
+
+bool dxfRW::processHelix() {
+    DRW_DBG("dxfRW::processHelix");
+    int code;
+    DRW_Spline sp;
+    bool inSpline = false;
+    while (reader->readRec(&code)) {
+        DRW_DBG(code); DRW_DBG("\n");
+        if (0 == code) {
+            nextentity = reader->getString();
+            DRW_DBG(nextentity); DRW_DBG("\n");
+            if (sp.ncontrol > 0 || sp.nfit > 0)
+                iface->addSpline(&sp);
+            return true;
+        }
+        if (100 == code) {
+            std::string sub = reader->getString();
+            if (sub == "AcDbSpline")
+                inSpline = true;
+            else if (sub == "AcDbHelix")
+                inSpline = false;
+            else
+                sp.parseCode(code, reader);
+            continue;
+        }
+        if (inSpline) {
+            if (!sp.parseCode(code, reader))
+                return setError(DRW::BAD_CODE_PARSED);
+        }
+        // skip non-spline codes (proxy graphics, helix params)
     }
 
     return setError(DRW::BAD_READ_ENTITIES);
