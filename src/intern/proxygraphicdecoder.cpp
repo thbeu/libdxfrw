@@ -170,7 +170,7 @@ void doArc3p(const std::uint8_t *p, std::size_t n, DRW_Interface &iface,
     if (!circumcenter2d(p1, p2, p3, cx, cy)) return; // collinear → emit nothing
     DRW_Arc e;
     e.basePoint = DRW_Coord(cx, cy, 0.0);
-    e.radious = std::hypot(p1.x - cx, p1.y - cy);
+    e.radius = std::hypot(p1.x - cx, p1.y - cy);
     e.staangle = std::atan2(p1.y - cy, p1.x - cx); // RADIANS (DRW_Arc native), start = p1
     e.endangle = std::atan2(p3.y - cy, p3.x - cx); // end = p3 (CCW, no swap)
     e.extPoint = DRW_Coord(0, 0, 1);
@@ -191,7 +191,7 @@ void doCircle3p(const std::uint8_t *p, std::size_t n, DRW_Interface &iface,
     if (!circumcenter2d(p1, p2, p3, cx, cy)) return;
     DRW_Circle e;
     e.basePoint = DRW_Coord(cx, cy, 0.0);
-    e.radious = std::hypot(p1.x - cx, p1.y - cy);
+    e.radius = std::hypot(p1.x - cx, p1.y - cy);
     e.extPoint = DRW_Coord(0, 0, 1);
     applyAttribs(e, parent, st);
     iface.addCircle(e);
@@ -204,7 +204,7 @@ void doCircle(const std::uint8_t *p, std::size_t n, DRW_Interface &iface,
     ByteStream bs(p, n);
     DRW_Circle e;
     e.basePoint = bs.readVertex();
-    e.radious = bs.readDouble();
+    e.radius = bs.readDouble();
     // normal vector follows (3 doubles) — read to advance but ignore (planar).
     bs.readVertex();
     if (bs.bad) return;
@@ -220,7 +220,7 @@ void doArc(const std::uint8_t *p, std::size_t n, DRW_Interface &iface,
     ByteStream bs(p, n);
     DRW_Arc e;
     e.basePoint = bs.readVertex();      // center (WCS)
-    e.radious = bs.readDouble();
+    e.radius = bs.readDouble();
     bs.readVertex();                    // normal (ignored — planar)
     DRW_Coord start = bs.readVertex();  // UCS x-axis
     double sweep = bs.readDouble();     // radians

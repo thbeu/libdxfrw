@@ -1924,7 +1924,7 @@ bool DRW_Circle::encodeDwg(DRW::Version version, dwgBufferW *buf, std::uint32_t 
     buf->putBitDouble(basePoint.x);
     buf->putBitDouble(basePoint.y);
     buf->putBitDouble(basePoint.z);
-    buf->putBitDouble(radious);
+    buf->putBitDouble(radius);
     buf->putThickness(thickness, /*b_R2000_style=*/true);
     buf->putExtrusion(extPoint, /*b_R2000_style=*/true);
 
@@ -2438,7 +2438,7 @@ bool DRW_Arc::encodeDwg(DRW::Version version, dwgBufferW *buf, std::uint32_t bs,
     buf->putBitDouble(basePoint.x);
     buf->putBitDouble(basePoint.y);
     buf->putBitDouble(basePoint.z);
-    buf->putBitDouble(radious);
+    buf->putBitDouble(radius);
     buf->putThickness(thickness, /*b_R2000_style=*/true);
     buf->putExtrusion(extPoint, /*b_R2000_style=*/true);
     buf->putBitDouble(staangle);
@@ -2517,7 +2517,7 @@ void DRW_Circle::applyExtrusion(){
 bool DRW_Circle::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     switch (code) {
     case 40:
-        radious = reader->getDouble();
+        radius = reader->getDouble();
         break;
     default:
         return DRW_Point::parseCode(code, reader);
@@ -2536,8 +2536,8 @@ bool DRW_Circle::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs
     basePoint.y = buf->getBitDouble();
     basePoint.z = buf->getBitDouble();
     DRW_DBG("center: "); DRW_DBGPT(basePoint.x, basePoint.y, basePoint.z);
-    radious = buf->getBitDouble();
-    DRW_DBG("\nradius: "); DRW_DBG(radious);
+    radius = buf->getBitDouble();
+    DRW_DBG("\nradius: "); DRW_DBG(radius);
 
     thickness = buf->getThickness(version > DRW::AC1014);
     DRW_DBG(" thickness: "); DRW_DBG(thickness);
@@ -2597,8 +2597,8 @@ bool DRW_Arc::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs){
     basePoint.z = buf->getBitDouble();
     DRW_DBG("center point: "); DRW_DBGPT(basePoint.x, basePoint.y, basePoint.z);
 
-    radious = buf->getBitDouble();
-    DRW_DBG("\nradius: "); DRW_DBG(radious);
+    radius = buf->getBitDouble();
+    DRW_DBG("\nradius: "); DRW_DBG(radius);
     thickness = buf->getThickness(version > DRW::AC1014);
     DRW_DBG(" thickness: "); DRW_DBG(thickness);
     extPoint = buf->getExtrusion(version > DRW::AC1014);
@@ -5499,7 +5499,7 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
             spline->knotslist.push_back(reader->getDouble());
             break;
         }
-        if (arc) arc->radious = reader->getDouble();
+        if (arc) arc->radius = reader->getDouble();
         else if (ellipse) ellipse->ratio = reader->getDouble();
         break;
     case 41:
@@ -5778,7 +5778,7 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
                 } else if (typePath == 2){ //circle arc
                     addArc();
                     arc->basePoint = buf->get2RawDouble();
-                    arc->radious = buf->getBitDouble();
+                    arc->radius = buf->getBitDouble();
                     arc->staangle = buf->getBitDouble();
                     arc->endangle = buf->getBitDouble();
                     arc->isccw = buf->getBit();
@@ -5956,7 +5956,7 @@ bool DRW_Hatch::encodeDwg(DRW::Version version, dwgBufferW *buf, std::uint32_t b
                 } else if (const auto* arc = dynamic_cast<const DRW_Arc*>(seg.get())) {
                     buf->putRawChar8(2);  // circular arc
                     buf->put2RawDouble(arc->basePoint);
-                    buf->putBitDouble(arc->radious);
+                    buf->putBitDouble(arc->radius);
                     buf->putBitDouble(arc->staangle);   // radians
                     buf->putBitDouble(arc->endangle);
                     buf->putBit(static_cast<std::uint8_t>(arc->isccw));
