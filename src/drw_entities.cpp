@@ -238,7 +238,7 @@ bool DRW_Entity::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer* strBu
             DRW_DBG("\nDRW_TableEntry::parseDwg string strDataSize: "); DRW_DBGH(strDataSize); DRW_DBG("\n");
             if ( (strDataSize& 0x8000) == 0x8000){
                 DRW_DBG("\nDRW_TableEntry::parseDwg string 0x8000 bit is set");
-                strBuf->moveBitPos(-33);//RLZ pending to verify
+                strBuf->moveBitPos(-32);
                 duint16 hiSize = strBuf->getRawShort16();
                 strDataSize = ((strDataSize&0x7fff) | (hiSize<<15));
             }
