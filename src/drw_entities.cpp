@@ -4361,8 +4361,8 @@ DRW_Attrib& DRW_Attrib::operator=(const DRW_Attrib& o) {
     }
     return *this;
 }
-DRW_Attrib::DRW_Attrib(DRW_Attrib&&) noexcept = default;
-DRW_Attrib& DRW_Attrib::operator=(DRW_Attrib&&) noexcept = default;
+DRW_Attrib::DRW_Attrib(DRW_Attrib&&) = default;
+DRW_Attrib& DRW_Attrib::operator=(DRW_Attrib&&) = default;
 
 namespace {
 struct EmbeddedMTextHandleInfo {
