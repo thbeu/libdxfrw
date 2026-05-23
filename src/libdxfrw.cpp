@@ -994,8 +994,20 @@ bool dxfRW::writePolyline(DRW_Polyline *ent) {
         DRW_Vertex *v = ent->vertlist.at(i).get();
         writer->writeString(0, "VERTEX");
         writeEntity(ent);
-        if (version > DRW::AC1009)
+        if (version > DRW::AC1009) {
             writer->writeString(100, "AcDbVertex");
+            if (ent->flags & 8)
+                writer->writeString(100, "AcDb3dPolylineVertex");
+            else if (ent->flags & 16)
+                writer->writeString(100, "AcDbPolygonMeshVertex");
+            else if (ent->flags & 64) {
+                if (v->flags & 128)
+                    writer->writeString(100, "AcDbFaceRecord");
+                else
+                    writer->writeString(100, "AcDbPolyFaceMeshVertex");
+            } else
+                writer->writeString(100, "AcDb2dVertex");
+        }
         if ( (v->flags & 128) && !(v->flags & 64) ) {
             writer->writeDouble(10, 0);
             writer->writeDouble(20, 0);
