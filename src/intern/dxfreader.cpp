@@ -247,7 +247,13 @@ bool dxfReaderAscii::readInt32() {
 
 bool dxfReaderAscii::readInt64() {
     type = INT64;
-    return readInt16();
+    std::string text;
+    if (readString(&text)){
+        int64 = strtoull(text.c_str(), nullptr, 10);
+        DRW_DBG(int64); DRW_DBG("\n");
+        return true;
+    } else
+        return false;
 }
 
 bool dxfReaderAscii::readDouble() {
