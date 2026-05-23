@@ -285,6 +285,7 @@ private:
     bool processHatch();
     bool processMPolygon();
     bool processSpline();
+    bool processHelix();
     bool process3dface();
     bool processMesh();
     bool processViewport();
