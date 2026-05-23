@@ -1230,8 +1230,7 @@ bool dxfRW::writeLeader(DRW_Leader *ent){
         writer->writeInt16(75, ent->hookflag);
         writer->writeDouble(40, ent->textheight);
         writer->writeDouble(41, ent->textwidth);
-        writer->writeDouble(76, ent->vertnum);
-        writer->writeDouble(76, ent->vertexlist.size());
+        writer->writeInt16(76, ent->vertexlist.size());
         for (unsigned int i=0; i<ent->vertexlist.size(); i++) {
             auto vert = ent->vertexlist.at(i);
             writer->writeDouble(10, vert->x);
