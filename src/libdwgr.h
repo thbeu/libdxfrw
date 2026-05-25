@@ -34,7 +34,7 @@ class dwgWriter;
 /// header so existing call sites compile unchanged.
 class dwgRW {
 public:
-    explicit dwgRW(const char* name);
+    explicit dwgRW(const wchar_t* name);
     ~dwgRW();
     //read: return true if all ok
     bool read(DRW_Interface *interface_, bool ext);
@@ -200,7 +200,7 @@ private:
 private:
     DRW::Version version { DRW::UNKNOWNV };
     DRW::error error { DRW::BAD_NONE };
-    std::string fileName;
+    std::wstring fileName;
     bool applyExt { false }; /*apply extrusion in entities to conv in 2D?*/
     std::string codePage;
     DRW_Interface *iface { nullptr };
