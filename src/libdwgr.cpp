@@ -44,7 +44,7 @@
     secObjects
 };*/
 
-dwgRW::dwgRW(const char* name)
+dwgRW::dwgRW(const wchar_t* name)
     : fileName{ name }
 {
     DRW_DBGSL(DRW_dbg::Level::None);
@@ -143,8 +143,6 @@ bool dwgRW::read(DRW_Interface *interface_, bool ext){
     bool isOk = false;
     applyExt = ext;
     iface = interface_;
-
-//testReader();return false;
 
     std::ifstream filestr;
     isOk = openFile(&filestr);
