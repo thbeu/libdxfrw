@@ -39,21 +39,21 @@ void usage(){
     std::cout << "        -v2010 dxf version 2010" << std::endl;
 }
 
-DRW::Version checkVersion(std::string param){
-    if (param == "-R12")
+DRW::Version checkVersion(std::wstring param){
+    if (param == L"-R12")
         return DRW::AC1009;
-    else if (param == "-v2000")
+    else if (param == L"-v2000")
         return DRW::AC1015;
-    else if (param == "-v2004")
+    else if (param == L"-v2004")
         return DRW::AC1018;
-    else if (param == "-v2007")
+    else if (param == L"-v2007")
         return DRW::AC1021;
-    else if (param == "-v2010")
+    else if (param == L"-v2010")
         return DRW::AC1024;
     return DRW::UNKNOWNV;
 }
 
-bool convertFile(std::string inName, std::string outName, DRW::Version ver, bool binary, bool overwrite){
+bool convertFile(std::wstring inName, std::wstring outName, DRW::Version ver, bool binary, bool overwrite){
     bool badState = false;
     //verify if input file exist
     std::ifstream ifs;
@@ -61,7 +61,7 @@ bool convertFile(std::string inName, std::string outName, DRW::Version ver, bool
     badState = ifs.fail();
     ifs.close();
     if (badState) {
-        std::cout << "Error can't open " << inName << std::endl;
+        std::wcout << L"Error can't open " << inName << std::endl;
         return false;
     }
     //verify if output file exist
@@ -71,7 +71,7 @@ bool convertFile(std::string inName, std::string outName, DRW::Version ver, bool
     ofs.close();
     if (!badState) {
         if (!overwrite){
-            std::cout << "File " << outName << " already exist, overwrite Y/N ?" << std::endl;
+            std::wcout << L"File " << outName << L" already exists, overwrite Y/N ?" << std::endl;
             int c = getchar();
             if (c == 'Y' || c=='y')
                 ;
@@ -88,7 +88,7 @@ bool convertFile(std::string inName, std::string outName, DRW::Version ver, bool
     dx_iface *input = new dx_iface();
     badState = input->fileImport( inName, &fData );
     if (!badState) {
-        std::cout << "Error reading file " << inName << std::endl;
+        std::wcout << L"Error reading file " << inName << std::endl;
         return false;
     }
 
@@ -120,12 +120,12 @@ bool convertFile(std::string inName, std::string outName, DRW::Version ver, bool
     return badState;
 }
 
-int main(int argc, char *argv[]) {
+int wmain(int argc, wchar_t *argv[]) {
     bool badState = false;
     bool binary = false;
     bool overwrite = false;
     bool batch = false;
-    std::string outName;
+    std::wstring outName;
     DRW::Version ver = DRW::UNKNOWNV;
     if (argc < 3) {
         usage();
@@ -133,9 +133,9 @@ int main(int argc, char *argv[]) {
     }
 
 //parse params.
-    std::string fileName = argv[1];
+    std::wstring fileName = argv[1];
     for (int i= 2; i < argc; ++i){
-        std::string param = argv[i];
+        std::wstring param = argv[i];
         if (i == (argc - 1) )
             outName = param;
         else {
@@ -179,34 +179,34 @@ int main(int argc, char *argv[]) {
     badState = ifs.fail();
     ifs.close();
     if (badState) {
-        std::cout << "Batch mode, Error can't open " << fileName << std::endl;
+        std::wcout << L"Batch mode, Error can't open " << fileName << std::endl;
         return 2;
     }
 
     //verify existence of output directory
-    struct stat statBuf;
-    int dirStat = stat(outName.c_str(), &statBuf);
+    struct _stat statBuf;
+    int dirStat = _wstat(outName.c_str(), &statBuf);
     if(dirStat != 0 || S_ISDIR(statBuf.st_mode) == 0) {
-        std::cout << "Batch mode: " << outName << " must be an existing directory" << std::endl;
+        std::wcout << L"Batch mode: " << outName << L" must be an existing directory" << std::endl;
         usage();
         return 4;
     }
-    outName+="/";
+    outName+=L"/";
     //create a list with the files to convert.
-    std::ifstream bfs;
-    bfs.open (fileName.c_str(), std::ifstream::in);
-    std::list<std::string>inList;
-    std::string line;
+    std::wifstream bfs;
+    bfs.open (fileName.c_str(), std::wifstream::in);
+    std::list<std::wstring>inList;
+    std::wstring line;
     while ( bfs.good() ){
         std::getline(bfs, line);
         if(!line.empty())
             inList.push_back(line);
     }
-    for (std::list<std::string>::const_iterator it=inList.begin(); it!=inList.end(); ++it){
-        std::string input = *it;
-        unsigned found = input.find_last_of("/\\");
-        std::string output = outName + input.substr(found+1);
-        std::cout << "Converting file " << input << " to " << output << std::endl;
+    for (auto it=inList.begin(); it!=inList.end(); ++it){
+        std::wstring input = *it;
+        unsigned found = input.find_last_of(L"/\\");
+        std::wstring output = outName + input.substr(found+1);
+        std::wcout << L"Converting file " << input << L" to " << output << std::endl;
         bool ok = convertFile(input, output, ver, binary, overwrite);
         if (!ok)
             std::cout << "Failed" << std::endl;

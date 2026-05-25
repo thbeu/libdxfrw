@@ -17,20 +17,20 @@
 #include "libdxfrw.h"
 
 
-bool dx_iface::fileImport(const std::string& fileI, dx_data *fData){
-    unsigned int found = fileI.find_last_of(".");
-    std::string fileExt = fileI.substr(found+1);
+bool dx_iface::fileImport(const std::wstring& fileI, dx_data *fData){
+    unsigned int found = fileI.find_last_of(L".");
+    std::wstring fileExt = fileI.substr(found+1);
     std::transform(fileExt.begin(), fileExt.end(),fileExt.begin(), ::toupper);
     cData = fData;
     currentBlock = cData->mBlock;
 
-    if (fileExt == "DXF"){
+    if (fileExt == L"DXF"){
         //loads dxf
         dxfRW* dxf = new dxfRW(fileI.c_str());
         bool success = dxf->read(this, false);
         delete dxf;
         return success;
-    } else if (fileExt == "DWG"){
+    } else if (fileExt == L"DWG"){
         //loads dwg
         dwgR* dwg = new dwgR(fileI.c_str());
         bool success = dwg->read(this, false);
@@ -41,7 +41,7 @@ bool dx_iface::fileImport(const std::string& fileI, dx_data *fData){
     return false;
 }
 
-bool dx_iface::fileExport(const std::string& file, DRW::Version v, bool binary, dx_data *fData){
+bool dx_iface::fileExport(const std::wstring& file, DRW::Version v, bool binary, dx_data *fData){
     cData = fData;
     dxfW = new dxfRW(file.c_str());
     bool success = dxfW->write(this, v, binary);

@@ -34,7 +34,7 @@
     secObjects
 };*/
 
-dxfRW::dxfRW(const char* name){
+dxfRW::dxfRW(const wchar_t* name){
     DRW_DBGSL(DRW_dbg::Level::None);
     fileName = name;
     applyExt = false;
