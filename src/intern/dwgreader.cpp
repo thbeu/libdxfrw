@@ -172,12 +172,12 @@ bool dwgReader::readDwgHandles(dwgBuffer *dbuf, duint64 offset, duint64 size) {
     if (!dbuf->setPosition(offset))
         return false;
 
-    duint32 maxPos = offset + size;
+    duint64 maxPos = offset + size;
     DRW_DBG("\nSection HANDLES offset= "); DRW_DBG(offset);
     DRW_DBG("\nSection HANDLES size= "); DRW_DBG(size);
     DRW_DBG("\nSection HANDLES maxPos= "); DRW_DBG(maxPos);
 
-    int startPos = offset;
+    dint64 startPos = offset;
     bool end = false;
 
     std::vector<duint8> tmpByteStr;

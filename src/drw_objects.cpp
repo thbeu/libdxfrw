@@ -113,7 +113,7 @@ DRW_DBG("\n***************************** parsing table entry *******************
         DRW_DBG(" Object size: "); DRW_DBG(objSize); DRW_DBG("\n");
     }
     if (version > DRW::AC1021) {//2010+
-        duint32 ms = buf->size();
+        duint32 ms = static_cast<duint32>(buf->size());
         objSize = ms*8 - bs;
         DRW_DBG(" Object size: "); DRW_DBG(objSize); DRW_DBG("\n");
     }
@@ -150,7 +150,7 @@ DRW_DBG("\n***************************** parsing table entry *******************
         duint8 *tmpExtData = new duint8[extDataSize];
         buf->getBytes(tmpExtData, extDataSize);
         dwgBuffer tmpExtDataBuf(tmpExtData, extDataSize, buf->decoder);
-        int pos = tmpExtDataBuf.getPosition();
+        duint64 pos = tmpExtDataBuf.getPosition();
         int bpos = tmpExtDataBuf.getBitPos();
         DRW_DBG("ext data pos: "); DRW_DBG(pos); DRW_DBG("."); DRW_DBG(bpos); DRW_DBG("\n");
         duint8 dxfCode = tmpExtDataBuf.getRawChar8();

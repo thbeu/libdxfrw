@@ -223,7 +223,7 @@ bool DRW_Entity::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer* strBu
         DRW_DBG(" Object size: "); DRW_DBG(objSize); DRW_DBG("\n");
     }
     if (version > DRW::AC1021) {//2010+
-        duint32 ms = buf->size();
+        duint32 ms = static_cast<duint32>(buf->size());
         objSize = ms*8 - bs;
         DRW_DBG(" Object size: "); DRW_DBG(objSize); DRW_DBG("\n");
     }
@@ -284,8 +284,8 @@ bool DRW_Entity::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer* strBu
                     duint16 nChars = tmpExtDataBuf.getRawShort16();
                     if (nChars > 0) {
                         duint64 byteLen = static_cast<duint64>(nChars) * 2;
-                        if ((duint64)tmpExtDataBuf.numRemainingBytes() < byteLen) break;
-                        std::vector<duint8> bytes(byteLen);
+                        if (tmpExtDataBuf.numRemainingBytes() < static_cast<dint64>(byteLen)) break;
+                        std::vector<duint8> bytes(static_cast<size_t>(byteLen));
                         tmpExtDataBuf.getBytes(bytes.data(), byteLen);
                         // Inline UTF-16LE → UTF-8 conversion.
                         for (duint16 i = 0; i < nChars; ++i) {
@@ -665,7 +665,7 @@ bool DRW_Entity::parseDwgEntHandle(DRW::Version version, dwgBuffer *buf){
             }
         }
     }
-    const int rb = buf->numRemainingBytes();
+    const dint64 rb = buf->numRemainingBytes();
     DRW_DBG("\n DRW_Entity::parseDwgEntHandle Remaining bytes: "); DRW_DBG(rb); DRW_DBG("\n");
     if (rb > 4) {  // 2-byte CRC + slack
         DRW_DBG("\n*** parseDwgEntHandle leftover ");
@@ -5210,7 +5210,7 @@ bool DRW_MLeader::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
             if (!safeHandle(bl.attDefHandle, "blocklabels.attdef"))     return true;
     }
 
-    const int rb = buf->numRemainingBytes();
+    const dint64 rb = buf->numRemainingBytes();
     DRW_DBG("\nMLEADER tail rb="); DRW_DBG(rb); DRW_DBG("\n");
     if (rb > 4) {
         DRW_DBG("MLEADER: handle-stream tail "); DRW_DBG(rb);

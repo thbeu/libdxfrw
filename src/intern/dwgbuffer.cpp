@@ -205,10 +205,10 @@ void dwgBuffer::setBitPos(duint8 pos){
     bitPos = pos;
 }
 
-bool dwgBuffer::moveBitPos(dint32 size){
+bool dwgBuffer::moveBitPos(dint64 size){
     if (size == 0) return true;
 
-    dint32 b= size + bitPos;
+    dint64 b= size + bitPos;
     filestr->setPos(getPosition() + (b >> 3) );
     bitPos = b & 7;
 
@@ -589,11 +589,11 @@ std::string dwgBuffer::get8bitStr(){
 
 //internal since 2007 //pending: are 2 bytes null terminated??
 //nullTerm = true if string are 2 bytes null terminated from the stream
-std::string dwgBuffer::get16bitStr(duint16 textSize, bool nullTerm){
+std::string dwgBuffer::get16bitStr(duint32 textSize, bool nullTerm){
     if (textSize == 0)
         return std::string();
     textSize *=2;
-    duint16 ts = textSize;
+    duint32 ts = textSize;
     if (nullTerm)
         ts += 2;
     duint8 *tmpBuffer = new duint8[textSize + 2];
@@ -624,7 +624,7 @@ std::string dwgBuffer::getCP8Text(){
 /**Reads 2-bytes char (UCS2, NULL terminated) and convert to std::string (only for Latin-1)
    ts= total input size in bytes.
 **/
-std::string dwgBuffer::getUCSStr(duint16 ts){
+std::string dwgBuffer::getUCSStr(duint32 ts){
     std::string strData;
     if (ts<4) //at least 1 char
         return std::string();
@@ -894,11 +894,11 @@ bool dwgBuffer::getBytes(unsigned char *buf, duint64 size){
     return true;
 }
 
-duint16 dwgBuffer::crc8(duint16 dx,dint32 start,dint32 end){
+duint16 dwgBuffer::crc8(duint16 dx,dint64 start,dint64 end){
     duint64 pos = filestr->getPos();
     filestr->setPos(start);
-    int n = end-start;
-    duint8 *tmpBuf = new duint8[n];
+    dint64 n = end-start;
+    duint8 *tmpBuf = new duint8[static_cast<size_t>(n)];
     duint8 *p = tmpBuf;
     filestr->read (tmpBuf,n);
     filestr->setPos(pos);
