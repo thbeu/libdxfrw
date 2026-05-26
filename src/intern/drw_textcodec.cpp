@@ -357,6 +357,7 @@ std::string DRW_ConvDBCSTable::toUtf8(const std::string &s) {
             res += encodeNum(0x20AC);//euro sign
         } else {//2 bytes
             ++it;
+            if (it == s.end()) break;
             int code = (c << 8) | static_cast<unsigned char >(*it);
             int sta = leadTable[c-0x81];
             int end = leadTable[c-0x80];
@@ -446,6 +447,7 @@ std::string DRW_Conv932Table::toUtf8(const std::string &s) {
             res += encodeNum(c + CPOFFSET932); //translate from table
         } else {//2 bytes
             ++it;
+            if (it == s.end()) break;
             int code = (c << 8) | static_cast<unsigned char>(*it);
             int sta=0;
             int end=0;
@@ -483,7 +485,9 @@ std::string DRW_ConvUTF16::toUtf8(const std::string &s){//RLZ: pending to write
     std::string res;
     for ( auto it=s.begin() ; it < s.end(); ++it ) {
         unsigned char c1 = *it;
-        unsigned char c2 = *(++it);
+        ++it;
+        if (it == s.end()) break;
+        unsigned char c2 = *it;
         duint16 ch = (c2 <<8) | c1;
         res +=encodeNum(ch);
     } //end for
