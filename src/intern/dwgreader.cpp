@@ -917,6 +917,20 @@ bool dwgReader::readDwgBlocks(DRW_Interface& intfa, dwgBuffer *dbuf){
     std::uint32_t bs =0;
     DRW_DBG("\nobject map total size= "); DRW_DBG(ObjectMap.size());
 
+    // Two-pass approach to ensure all block record names are updated before
+    // INSERTs inside blocks are processed. This fixes Dynamic Block references
+    // where Block A contains INSERT of Block B, and A is parsed before B.
+
+    // Structure to hold parsed block data for second pass
+    struct BlockData {
+        DRW_Block_Record* bkr;
+        DRW_Block block;
+        bool deferredEntityWalk;
+    };
+    std::vector<BlockData> parsedBlocks;
+    parsedBlocks.reserve(blockRecordmap.size());
+
+    // PASS 1: Parse all BLOCK entities and update all block record names
     for (auto it=blockRecordmap.begin(); it != blockRecordmap.end(); ++it){
         DRW_Block_Record* bkr= it->second;
         DRW_DBG("\nParsing Block, record handle= "); DRW_DBGH(it->first); DRW_DBG(" Name= "); DRW_DBG(bkr->name); DRW_DBG("\n");
@@ -953,44 +967,54 @@ bool dwgReader::readDwgBlocks(DRW_Interface& intfa, dwgBuffer *dbuf){
         bk.flags = bkr->flags;
         bk.insUnits = bkr->insUnits;
         bk.xrefPath = bkr->xrefPath;
-        /**read & send block entities**/
-        // Modelspace / paperspace block_records have no DWG-side parent
-        // handle (the legacy "330 not set like dxf in ModelSpace & PaperSpace"
-        // case).  Their entities are still walked here, but post-endBlock so
-        // they land in the interface's modelspace container rather than in
-        // the just-opened addBlock scope.  Walking in entMap / firstEH..lastEH
-        // order also guarantees POLYLINE parents precede their VERTEX
-        // children, which readPlineVertex's ObjectMap.find() lookup requires.
+
+        // Update block record name NOW (before any entities are processed)
+        bkr->name = bk.name;
+
+        // Determine if entity walk should be deferred
         const bool deferredEntityWalk = (bk.parentHandle == DRW::NoHandle);
         if (deferredEntityWalk) {
             bk.parentHandle = bkr->handle;
         }
-        intfa.addBlock(bk);
-        //and update block record name
-        bkr->name = bk.name;
 
-        if (!deferredEntityWalk) {
+        // Store for second pass
+        parsedBlocks.push_back({bkr, std::move(bk), deferredEntityWalk});
+    }
+
+    // PASS 2: Dispatch blocks and process entities (now all names are resolved)
+    for (auto& bd : parsedBlocks){
+        DRW_Block_Record* bkr = bd.bkr;
+        DRW_Block& bk = bd.block;
+
+        intfa.addBlock(bk);
+
+        if (!bd.deferredEntityWalk) {
             ret2 = walkBlockRecordEntities(bkr, dbuf, intfa);
             ret = ret && ret2;
         }
 
         //end block entity, really needed to parse a dummy entity??
-        mit = ObjectMap.find(bkr->endBlock);
+        auto mit = ObjectMap.find(bkr->endBlock);
         if (mit==ObjectMap.end()) {
             DRW_DBG("\nWARNING: end block entity not found\n");
             ret = false;
+            intfa.endBlock();
+            if (bd.deferredEntityWalk) {
+                ret2 = walkBlockRecordEntities(bkr, dbuf, intfa);
+                ret = ret && ret2;
+            }
             continue;
         }
-        oc = mit->second;
+        objHandle oc = mit->second;
         ObjectMap.erase(mit);
         DRW_DBG("End block Handle= "); DRW_DBGH(oc.handle); DRW_DBG(" Location: "); DRW_DBG(oc.loc); DRW_DBG("\n");
         dbuf->setPosition(oc.loc);
-        size = dbuf->getModularShort();
+        int size = dbuf->getModularShort();
         if (version > DRW::AC1021) //2010+
             bs = dbuf->getUModularChar();
         else
             bs = 0;
-        tmpByteStr.resize(size);
+        std::vector<std::uint8_t> tmpByteStr(size);
         dbuf->getBytes(tmpByteStr.data(), size);
         dwgBuffer buff1(tmpByteStr.data(), size, &decoder);
         DRW_Block end;
@@ -1000,7 +1024,7 @@ bool dwgReader::readDwgBlocks(DRW_Interface& intfa, dwgBuffer *dbuf){
         parseAttribs(&end);
         intfa.endBlock();
 
-        if (deferredEntityWalk) {
+        if (bd.deferredEntityWalk) {
             // currentBlock has just been reset to the interface's modelspace
             // container; dispatched entities flow there.
             ret2 = walkBlockRecordEntities(bkr, dbuf, intfa);
@@ -1311,8 +1335,20 @@ bool dwgReader::readDwgEntity(dwgBuffer *dbuf, objHandle& obj, DRW_Interface& in
         case 8: {//minsert = 8
             DRW_Insert e;
             if (entryParse( e, buff, bs, ret)) {
-                e.name = findTableName(DRW::BLOCK_RECORD,
-                                       e.blockRecH.ref);//RLZ: find as block or blockrecord (ps & ps0)
+                // Resolve offset-based handle codes (code > 5 means offset from entity handle)
+                std::uint32_t blockRecRef = e.blockRecH.ref;
+                if (e.blockRecH.code > 5) {
+                    if (e.blockRecH.code == 0x0C)
+                        blockRecRef = e.handle - e.blockRecH.ref;
+                    else if (e.blockRecH.code == 0x0A)
+                        blockRecRef = e.handle + e.blockRecH.ref;
+                    else if (e.blockRecH.code == 0x08)
+                        blockRecRef = e.handle - 1;
+                    else if (e.blockRecH.code == 0x06)
+                        blockRecRef = e.handle + 1;
+                }
+                e.blockRecRef = blockRecRef; // Store for post-parse re-lookup if name is truncated
+                e.name = findTableName(DRW::BLOCK_RECORD, blockRecRef);
 
                 // Drain any orphan ATTRIBs already seen for this INSERT.
                 auto orphIt = m_orphanAttribs.find(e.handle);

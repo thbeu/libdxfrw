@@ -857,6 +857,7 @@ public:
     std::vector<std::shared_ptr<DRW_Attrib>> attlist;
 public: //only for read dwg
     dwgHandle blockRecH;
+    std::uint32_t blockRecRef = 0; /*!< Resolved block record handle for post-parse name lookup */
     dwgHandle seqendH; //RLZ: on implement attrib remove this handle from obj list (see pline/vertex code)
     /*!< Handles of attached ATTRIBs, captured from DRW_Insert::parseDwg. */
     std::vector<dwgHandle> attribHandles;
