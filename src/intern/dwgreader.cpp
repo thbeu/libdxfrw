@@ -909,8 +909,7 @@ bool dwgReader::walkBlockRecordEntities(DRW_Block_Record* bkr, dwgBuffer *dbuf, 
                 nextH = nextEntLink;
         }
     } else { //2004+
-        for (auto it = bkr->entMap.begin(); it != bkr->entMap.end(); ++it) {
-            duint32 nextH = *it;
+        for (const auto& nextH : bkr->entMap) {
             auto mit = ObjectMap.find(nextH);
             if (mit == ObjectMap.end()) {
                 DRW_DBG("\nWARNING: Entity of block not found\n");
@@ -974,8 +973,7 @@ bool dwgReader::readPlineVertex(DRW_Polyline& pline, dwgBuffer *dbuf){
             }
         }
     } else {//2004+
-        for (std::list<duint32>::iterator it = pline.hadlesList.begin() ; it != pline.hadlesList.end(); ++it){
-            duint32 nextH = *it;
+        for (const auto& nextH : pline.hadlesList){
             auto mit = ObjectMap.find(nextH);
             if (mit==ObjectMap.end()) {
                 DRW_DBG("\nWARNING: Entity of block not found\n");
@@ -1036,7 +1034,7 @@ bool dwgReader::readDwgEntities(DRW_Interface& intfa, dwgBuffer *dbuf){
 
     // Flush any INSERTs still awaiting ATTRIB children (defensive — handles
     // missing SEQEND or ATTRIB entries that failed to parse).
-    for (auto& kv : m_pendingInserts)
+    for (const auto& kv : m_pendingInserts)
         intfa.addInsert(kv.second);
     m_pendingInserts.clear();
     if (!m_orphanAttribs.empty()) {
