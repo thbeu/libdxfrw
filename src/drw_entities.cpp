@@ -5593,16 +5593,16 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
                 spline.reset();
                 m_splineNfitSet = false;
                 m_boundaryHandleCount = reader->getInt32();
-                if (m_boundaryHandleCount > 0 && loop)
-                    DRW::reserve(loop->m_boundaryHandles, m_boundaryHandleCount);
+                if (m_boundaryHandleCount > 0 && loop && !DRW::reserve(loop->m_boundaryHandles, m_boundaryHandleCount))
+                    return false;
             }
             break;
         }
         // No active spline: this is the loop boundary handle count.
         m_splineNfitSet = false;
         m_boundaryHandleCount = reader->getInt32();
-        if (m_boundaryHandleCount > 0 && loop)
-            DRW::reserve(loop->m_boundaryHandles, m_boundaryHandleCount);
+        if (m_boundaryHandleCount > 0 && loop && !DRW::reserve(loop->m_boundaryHandles, m_boundaryHandleCount))
+            return false;
         break;
     case 330:
         if (m_boundaryHandleCount > 0 && loop) {
@@ -5645,8 +5645,8 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     case 98: { // seed-point count; coords follow as group-10/20 pairs
         clearEntities();
         const int count = reader->getInt32();
-        if (count > 0)
-            DRW::reserve(seedPoints, count);
+        if (count > 0 && !DRW::reserve(seedPoints, count))
+            return false;
         break;
     }
     case 450:
@@ -5660,8 +5660,8 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
         break;
     case 453: {
         const int n = reader->getInt32();
-        if (n > 0)
-            DRW::reserve(gradColors, n);
+        if (n > 0 && !DRW::reserve(gradColors, n))
+            return false;
         break;
     }
     case 460:
@@ -5729,8 +5729,8 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
         DRW_DBG(" Gradient tint: "); DRW_DBG(gradTint);
         std::int32_t numCol = buf->getBitLong();
         DRW_DBG(" num colors: "); DRW_DBG(numCol);
-        if (numCol > 0)
-            DRW::reserve(gradColors, numCol);
+        if (numCol > 0 && !DRW::reserve(gradColors, numCol))
+            return false;
         for (std::int32_t i = 0 ; i < numCol; ++i){
             GradientStop stop;
             // First field is the stop position (per libreDWG: BD/unkDouble holds
@@ -5761,21 +5761,15 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
     DRW_DBG(" loopsnum: "); DRW_DBG(loopsnum); DRW_DBG("\n");
 
     //read loops
-    if (loopsnum > buf->numRemainingBytes()) {
-        DRW_DBG("Warning: loopsnum exceeds remaining bytes, skipping\n");
-        return false;
-    }
     for (std::int32_t i = 0 ; i < loopsnum; ++i){
         loop = std::make_shared<DRW_HatchLoop>(buf->getBitLong());
         havePixelSize |= (loop->type & 4) != 0;
-        DRW_DBG(" loop["); DRW_DBG(i); DRW_DBG("] type: "); DRW_DBG(loop->type);
+        DRW_DBG(" loop["); DRW_DBG(i); DRW_DBG("] type: 0x"); DRW_DBG(loop->type);
+        DRW_DBG(" remaining: "); DRW_DBG(buf->numRemainingBytes());
+
         if (!(loop->type & 2)){ //Not polyline
             std::int32_t numPathSeg = buf->getBitLong();
             DRW_DBG(" numPathSeg: "); DRW_DBG(numPathSeg); DRW_DBG("\n");
-            if (numPathSeg > buf->numRemainingBytes()) {
-                DRW_DBG("Warning: numPathSeg exceeds remaining bytes, skipping\n");
-                return false;
-            }
             for (std::int32_t j = 0; j<numPathSeg;++j){
                 std::uint8_t typePath = buf->getRawChar8();
                 DRW_DBG("  seg["); DRW_DBG(j); DRW_DBG("] typePath: "); DRW_DBG(typePath); DRW_DBG("\n");
@@ -5833,6 +5827,10 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
                         spline->tgStart = buf->get2RawDouble();
                         spline->tgEnd = buf->get2RawDouble();
                     }
+                } else {
+                    // Unknown typePath - parsing is misaligned, abort
+                    DRW_DBG("Warning: unknown typePath "); DRW_DBG(typePath); DRW_DBG(", aborting hatch\n");
+                    return false;
                 }
             }
         } else { //end not pline, start polyline
@@ -5842,10 +5840,6 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
             std::int32_t numVert = buf->getBitLong();
             DRW_DBG(" asBulge: "); DRW_DBG(asBulge); DRW_DBG(" closed: "); DRW_DBG(pline->flags);
             DRW_DBG(" numVert: "); DRW_DBG(numVert); DRW_DBG("\n");
-            if (numVert > buf->numRemainingBytes() / 16) {
-                DRW_DBG("Warning: numVert exceeds remaining bytes, skipping\n");
-                return false;
-            }
             for (std::int32_t j = 0; j<numVert;++j){
                 DRW_Vertex2D v;
                 v.x = buf->getRawDouble();
@@ -5893,8 +5887,9 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
     }
     std::int32_t numSeedPoints = buf->getBitLong();
     DRW_DBG("\nnum Seed Points  "); DRW_DBG(numSeedPoints);
-    if (numSeedPoints > 0)
-        DRW::reserve(seedPoints, numSeedPoints);
+    if (numSeedPoints > 0 && !DRW::reserve(seedPoints, numSeedPoints))
+        return false;
+
     for (std::int32_t i = 0 ; i < numSeedPoints; ++i){
         DRW_Coord seedPt;
         seedPt.x = buf->getRawDouble();

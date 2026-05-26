@@ -25,7 +25,7 @@ namespace DRW
      * which are caught here to avoid crashes or other vulnerabilities.
      */
     template <typename T>
-    bool reserve(std::vector<T> &list, const int size)
+    [[nodiscard]] bool reserve(std::vector<T> &list, const int size)
     {
         try {
             list.reserve( size);
