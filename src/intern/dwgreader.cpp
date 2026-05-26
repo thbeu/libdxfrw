@@ -210,6 +210,20 @@ std::string dwgReader::findTableName(DRW::TTYPE table, std::int32_t handle){
     return name;
 }
 
+std::uint32_t dwgReader::resolveHandleRef(std::uint32_t handle, const dwgHandle& h){
+    if (h.code > 5) {
+        if (h.code == 0x0C)
+            return handle - h.ref;
+        else if (h.code == 0x0A)
+            return handle + h.ref;
+        else if (h.code == 0x08)
+            return handle - 1;
+        else if (h.code == 0x06)
+            return handle + 1;
+    }
+    return h.ref;
+}
+
 bool dwgReader::readDwgHeader(DRW_Header& hdr, dwgBuffer *buf, dwgBuffer *hBuf){
     // The R2010+ bitsize_hi gate inside parseDwg keys off the APP maintenance
     // version (byte 0x12), not byte 0x0B — see appMaintenanceVersion in dwgreader.h.
@@ -1335,20 +1349,7 @@ bool dwgReader::readDwgEntity(dwgBuffer *dbuf, objHandle& obj, DRW_Interface& in
         case 8: {//minsert = 8
             DRW_Insert e;
             if (entryParse( e, buff, bs, ret)) {
-                // Resolve offset-based handle codes (code > 5 means offset from entity handle)
-                std::uint32_t blockRecRef = e.blockRecH.ref;
-                if (e.blockRecH.code > 5) {
-                    if (e.blockRecH.code == 0x0C)
-                        blockRecRef = e.handle - e.blockRecH.ref;
-                    else if (e.blockRecH.code == 0x0A)
-                        blockRecRef = e.handle + e.blockRecH.ref;
-                    else if (e.blockRecH.code == 0x08)
-                        blockRecRef = e.handle - 1;
-                    else if (e.blockRecH.code == 0x06)
-                        blockRecRef = e.handle + 1;
-                }
-                e.blockRecRef = blockRecRef; // Store for post-parse re-lookup if name is truncated
-                e.name = findTableName(DRW::BLOCK_RECORD, blockRecRef);
+                e.name = findTableName(DRW::BLOCK_RECORD, resolveHandleRef(e.handle, e.blockRecH));
 
                 // Drain any orphan ATTRIBs already seen for this INSERT.
                 auto orphIt = m_orphanAttribs.find(e.handle);
@@ -1494,6 +1495,7 @@ bool dwgReader::readDwgEntity(dwgBuffer *dbuf, objHandle& obj, DRW_Interface& in
             DRW_DimOrdinate e;
             if (entryParse( e, buff, bs, ret)) {
                 e.style = findTableName(DRW::DIMSTYLE, e.dimStyleH.ref);
+                e.setName(findTableName(DRW::BLOCK_RECORD, resolveHandleRef(e.handle, e.blockH)));
                 intfa.addDimOrdinate(&e);
             }
             break; }
@@ -1501,6 +1503,7 @@ bool dwgReader::readDwgEntity(dwgBuffer *dbuf, objHandle& obj, DRW_Interface& in
             DRW_DimLinear e;
             if (entryParse( e, buff, bs, ret)) {
                 e.style = findTableName(DRW::DIMSTYLE, e.dimStyleH.ref);
+                e.setName(findTableName(DRW::BLOCK_RECORD, resolveHandleRef(e.handle, e.blockH)));
                 intfa.addDimLinear(&e);
             }
             break; }
@@ -1508,6 +1511,7 @@ bool dwgReader::readDwgEntity(dwgBuffer *dbuf, objHandle& obj, DRW_Interface& in
             DRW_DimAligned e;
             if (entryParse( e, buff, bs, ret)) {
                 e.style = findTableName(DRW::DIMSTYLE, e.dimStyleH.ref);
+                e.setName(findTableName(DRW::BLOCK_RECORD, resolveHandleRef(e.handle, e.blockH)));
                 intfa.addDimAlign(&e);
             }
             break; }
@@ -1515,6 +1519,7 @@ bool dwgReader::readDwgEntity(dwgBuffer *dbuf, objHandle& obj, DRW_Interface& in
             DRW_DimAngular3p e;
             if (entryParse( e, buff, bs, ret)) {
                 e.style = findTableName(DRW::DIMSTYLE, e.dimStyleH.ref);
+                e.setName(findTableName(DRW::BLOCK_RECORD, resolveHandleRef(e.handle, e.blockH)));
                 intfa.addDimAngular3P(&e);
             }
             break; }
@@ -1522,6 +1527,7 @@ bool dwgReader::readDwgEntity(dwgBuffer *dbuf, objHandle& obj, DRW_Interface& in
             DRW_DimAngular e;
             if (entryParse( e, buff, bs, ret)) {
                 e.style = findTableName(DRW::DIMSTYLE, e.dimStyleH.ref);
+                e.setName(findTableName(DRW::BLOCK_RECORD, resolveHandleRef(e.handle, e.blockH)));
                 intfa.addDimAngular(&e);
             }
             break; }
@@ -1529,6 +1535,7 @@ bool dwgReader::readDwgEntity(dwgBuffer *dbuf, objHandle& obj, DRW_Interface& in
             DRW_DimRadial e;
             if (entryParse( e, buff, bs, ret)) {
                 e.style = findTableName(DRW::DIMSTYLE, e.dimStyleH.ref);
+                e.setName(findTableName(DRW::BLOCK_RECORD, resolveHandleRef(e.handle, e.blockH)));
                 intfa.addDimRadial(&e);
             }
             break; }
@@ -1536,6 +1543,7 @@ bool dwgReader::readDwgEntity(dwgBuffer *dbuf, objHandle& obj, DRW_Interface& in
             DRW_DimDiametric e;
             if (entryParse( e, buff, bs, ret)) {
                 e.style = findTableName(DRW::DIMSTYLE, e.dimStyleH.ref);
+                e.setName(findTableName(DRW::BLOCK_RECORD, resolveHandleRef(e.handle, e.blockH)));
                 intfa.addDimDiametric(&e);
             }
             break; }
