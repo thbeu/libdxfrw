@@ -5824,6 +5824,10 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
     DRW_DBG(" loopsnum: "); DRW_DBG(loopsnum); DRW_DBG("\n");
 
     //read loops
+    if (loopsnum > buf->numRemainingBytes()) {
+        DRW_DBG("Warning: loopsnum exceeds remaining bytes, skipping\n");
+        return false;
+    }
     for (std::int32_t i = 0 ; i < loopsnum; ++i){
         loop = std::make_shared<DRW_HatchLoop>(buf->getBitLong());
         havePixelSize |= (loop->type & 4) != 0;
@@ -5831,6 +5835,10 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
         if (!(loop->type & 2)){ //Not polyline
             std::int32_t numPathSeg = buf->getBitLong();
             DRW_DBG(" numPathSeg: "); DRW_DBG(numPathSeg); DRW_DBG("\n");
+            if (numPathSeg > buf->numRemainingBytes()) {
+                DRW_DBG("Warning: numPathSeg exceeds remaining bytes, skipping\n");
+                return false;
+            }
             for (std::int32_t j = 0; j<numPathSeg;++j){
                 std::uint8_t typePath = buf->getRawChar8();
                 DRW_DBG("  seg["); DRW_DBG(j); DRW_DBG("] typePath: "); DRW_DBG(typePath); DRW_DBG("\n");
@@ -5905,6 +5913,10 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
             std::int32_t numVert = buf->getBitLong();
             DRW_DBG(" asBulge: "); DRW_DBG(asBulge); DRW_DBG(" closed: "); DRW_DBG(pline->flags);
             DRW_DBG(" numVert: "); DRW_DBG(numVert); DRW_DBG("\n");
+            if (numVert > buf->numRemainingBytes() / 16) {
+                DRW_DBG("Warning: numVert exceeds remaining bytes, skipping\n");
+                return false;
+            }
             for (std::int32_t j = 0; j<numVert;++j){
                 DRW_Vertex2D v;
                 v.x = buf->getRawDouble();
