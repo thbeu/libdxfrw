@@ -520,6 +520,7 @@ bool DRW_Entity::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer* strBu
         DRW_DBG(hasEdgeVisualStyle); DRW_DBG("\n");
     }
     dint16 invisibleFlag = buf->getBitShort(); //BS
+    visible = (invisibleFlag == 0);  // Set visible property from DWG invisible flag
     DRW_DBG(" invisibleFlag: "); DRW_DBG(invisibleFlag);
     if (version > DRW::AC1014) {//2000+
         lWeight = DRW_LW_Conv::dwgInt2lineWidth( buf->getRawChar8() ); //RC
