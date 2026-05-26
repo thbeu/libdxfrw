@@ -148,6 +148,7 @@ protected:
     bool readDwgObject(dwgBuffer *dbuf, objHandle& obj, DRW_Interface& intfa);
     void parseAttribs(DRW_Entity* e);
     std::string findTableName(DRW::TTYPE table, dint32 handle);
+    duint32 resolveHandleRef(duint32 handle, const dwgHandle& h);
 
     void setCodePage(const std::string &c){decoder.setCodePage(c, false);}
     std::string getCodePage(){ return decoder.getCodePage();}
