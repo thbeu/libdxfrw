@@ -51,24 +51,24 @@ private:
 
     duint32 longCompressionOffset();
     duint32 long20CompressionOffset();
-    duint32 twoByteOffset(duint32 *ll);
+    duint32 twoByteOffset(duint64 *ll);
 
     static duint8 compressedByte(void);
-    static duint8 compressedByte(const duint32 index);
+    static duint8 compressedByte(const duint64 index);
     static duint32 compressedHiByte(void);
     static bool compressedInc(const dint32 inc = 1);
-    static duint8 decompByte(const duint32 index);
+    static duint8 decompByte(const duint64 index);
     static void decompSet(const duint8 value);
     static bool buffersGood(void);
     static void copyBlock21(const duint32 length);
 
     static duint8 *compressedBuffer;
-    static duint32 compressedSize;
-    static duint32 compressedPos;
+    static duint64 compressedSize;
+    static duint64 compressedPos;
     static bool    compressedGood;
     static duint8 *decompBuffer;
-    static duint32 decompSize;
-    static duint32 decompPos;
+    static duint64 decompSize;
+    static duint64 decompPos;
     static bool    decompGood;
 
     static const duint8 CopyOrder21_01[];

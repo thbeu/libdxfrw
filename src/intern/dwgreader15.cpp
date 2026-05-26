@@ -120,7 +120,7 @@ bool dwgReader15::readDwgHeader(DRW_Header& hdr){
         return false;
     if (!fileBuf->setPosition(si.address))
         return false;
-    std::vector<duint8> tmpByteStr(si.size);
+    std::vector<duint8> tmpByteStr(static_cast<size_t>(si.size));
     fileBuf->getBytes(tmpByteStr.data(), si.size);
     dwgBuffer buff(tmpByteStr.data(), si.size, &decoder);
     DRW_DBG("Header section sentinel= ");

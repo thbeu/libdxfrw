@@ -86,7 +86,7 @@ public:
     void resetPosition(){setPosition(0); setBitPos(0);}
     void setBitPos(duint8 pos);
     duint8 getBitPos() const {return bitPos;}
-    bool moveBitPos(dint32 size);
+    bool moveBitPos(dint64 size);
 
     duint8 getBit();  //B
     bool getBoolBit();  //B as bool
@@ -114,7 +114,7 @@ public:
     UTF8STRING getVariableText(DRW::Version v, bool nullTerm = true); //TV => call TU for 2007+ or T for previous versions
     UTF8STRING getCP8Text(); //T 8 bit text converted from codepage to utf8
     UTF8STRING getUCSText(bool nullTerm = true); //TU unicode 16 bit (UCS) text converted to utf8
-    UTF8STRING getUCSStr(duint16 ts);
+    UTF8STRING getUCSStr(duint32 ts);
 
     duint16 getObjType(DRW::Version v);  //OT
 
@@ -152,9 +152,9 @@ public:
 
     bool isGood() const {return filestr->good();}
     bool getBytes(duint8 *buf, duint64 size);
-    int numRemainingBytes() const {return (maxSize- filestr->getPos());}
+    dint64 numRemainingBytes() const {return maxSize- filestr->getPos();}
 
-    duint16 crc8(duint16 dx,dint32 start,dint32 end);
+    duint16 crc8(duint16 dx,dint64 start,dint64 end);
     duint32 crc32(duint32 seed,dint32 start,dint32 end);
 
 //    duint8 getCurrByte(){return currByte;}
@@ -193,7 +193,7 @@ private:
     duint8 bitPos{0};
 
     UTF8STRING get8bitStr();
-    UTF8STRING get16bitStr(duint16 textSize, bool nullTerm = true);
+    UTF8STRING get16bitStr(duint32 textSize, bool nullTerm = true);
 };
 
 #endif // DWGBUFFER_H

@@ -90,7 +90,7 @@ bool dwgRW::testReader(){
     }
 
     dwgBuffer fileBuf(&filestr);
-    duint8 *tmpStrData = new duint8[fileBuf.size()];
+    duint8 *tmpStrData = new duint8[static_cast<size_t>(fileBuf.size())];
     fileBuf.getBytes(tmpStrData, fileBuf.size());
     dwgBuffer dataBuf(tmpStrData, fileBuf.size());
     fileBuf.setPosition(0);

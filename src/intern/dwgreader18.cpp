@@ -111,7 +111,7 @@ bool dwgReader18::parseSysPage(duint8 *decompSec, duint32 decompSize){
  //called ???: Section map: 0x4163003b
 bool dwgReader18::parseDataPage(const dwgSectionInfo &si/*, duint8 *dData*/){
     DRW_DBG("\nparseDataPage\n ");
-    objData.reset( new duint8 [si.pageCount * si.maxSize] );
+    objData.reset( new duint8 [static_cast<size_t>(si.pageCount * si.maxSize)] );
 
     for (auto it=si.pages.begin(); it!=si.pages.end(); ++it){
         dwgPageInfo pi = it->second;
@@ -151,7 +151,7 @@ bool dwgReader18::parseDataPage(const dwgSectionInfo &si/*, duint8 *dData*/){
         DRW_DBG("\n      data checksum= "); DRW_DBGH(bufHdr.getRawLong32()); DRW_DBG("\n");
 
         //get compressed data
-        std::vector<duint8> cData(pi.cSize);
+        std::vector<duint8> cData(static_cast<size_t>(pi.cSize));
         if (!fileBuf->setPosition(pi.address + 32)) {
             return false;
         }

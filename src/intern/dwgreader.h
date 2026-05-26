@@ -88,9 +88,9 @@ public:
     dwgSectionInfo()=default;
     dint32 Id{-1}; //section Id, 2000-   rd15 rd18
     std::string name; //section name rd18
-    duint32 compressed{1};//is compressed? 1=no, 2=yes rd18, rd21(encoding)
-    duint32 encrypted{0};//encrypted (doc: 0=no, 1=yes, 2=unkn) on read: objects 0 and encrypted yes rd18
-    std::unordered_map<duint32, dwgPageInfo >pages;//index, size, offset
+    duint64 compressed{1};//is compressed? 1=no, 2=yes rd18, rd21(encoding)
+    duint64 encrypted{0};//encrypted (doc: 0=no, 1=yes, 2=unkn) on read: objects 0 and encrypted yes rd18
+    std::unordered_map<duint64, dwgPageInfo >pages;//index, size, offset
     duint64 size;//size of section,  2000- rd15, rd18, rd21 (data size)
     duint64 pageCount{0}; //number of pages (dwgPageInfo) in section rd18, rd21
     duint64 maxSize; //max decompressed size (needed??) rd18 rd21

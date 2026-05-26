@@ -149,15 +149,15 @@ bool dwgRSCodec::decode251I(unsigned char *in, unsigned char *out, duint32 blk){
 }
 
 duint8 *dwgCompressor::compressedBuffer {nullptr};
-duint32 dwgCompressor::compressedSize {0};
-duint32 dwgCompressor::compressedPos {0};
+duint64 dwgCompressor::compressedSize {0};
+duint64 dwgCompressor::compressedPos {0};
 bool    dwgCompressor::compressedGood {true};
 duint8 *dwgCompressor::decompBuffer {nullptr};
-duint32 dwgCompressor::decompSize {0};
-duint32 dwgCompressor::decompPos {0};
+duint64 dwgCompressor::decompSize {0};
+duint64 dwgCompressor::decompPos {0};
 bool    dwgCompressor::decompGood {true};
 
-duint32 dwgCompressor::twoByteOffset(duint32 *ll){
+duint32 dwgCompressor::twoByteOffset(duint64 *ll){
     duint32 cont = 0;
     duint8 fb = compressedByte();
     cont = (fb >> 2) | (compressedByte() << 6);
@@ -222,9 +222,9 @@ bool dwgCompressor::decompress18(duint8 *cbuf, duint8 *dbuf, duint64 csize, duin
     DRW_DBG("dwgCompressor::decompress, last 2 bytes: ");
     DRW_DBGH(compressedBuffer[compressedSize - 2]);DRW_DBG(" ");DRW_DBGH(compressedBuffer[compressedSize - 1]);DRW_DBG("\n");
 
-    duint32 compBytes {0};
+    duint64 compBytes {0};
     duint32 compOffset {0};
-    duint32 litCount {litLength18()};
+    duint64 litCount {litLength18()};
 
     //copy first literal length
     for (duint32 i = 0; i < litCount && buffersGood(); ++i) {
@@ -278,8 +278,8 @@ bool dwgCompressor::decompress18(duint8 *cbuf, duint8 *dbuf, duint64 csize, duin
             // only copy what we can fit
             compBytes = decompSize - decompPos;
         }
-        duint32 j {decompPos - compOffset - 1};
-        for (duint32 i = 0; i < compBytes && buffersGood(); i++) {
+        duint64 j {decompPos - compOffset - 1};
+        for (duint64 i = 0; i < compBytes && buffersGood(); i++) {
             decompSet( decompByte( j++));
         }
 
@@ -290,7 +290,7 @@ bool dwgCompressor::decompress18(duint8 *cbuf, duint8 *dbuf, duint64 csize, duin
             // only copy what we can fit
             litCount = decompSize - decompPos;
         }
-        for (duint32 i=0; i < litCount && buffersGood(); i++) {
+        for (duint64 i=0; i < litCount && buffersGood(); i++) {
             decompSet( compressedByte());
         }
     }
@@ -312,7 +312,7 @@ duint8 dwgCompressor::compressedByte(void)
     return result;
 }
 
-duint8 dwgCompressor::compressedByte(const duint32 index)
+duint8 dwgCompressor::compressedByte(const duint64 index)
 {
     if (index < compressedSize) {
         return compressedBuffer[index];
@@ -334,7 +334,7 @@ bool dwgCompressor::compressedInc(const dint32 inc /*= 1*/)
     return compressedGood;
 }
 
-duint8 dwgCompressor::decompByte(const duint32 index)
+duint8 dwgCompressor::decompByte(const duint64 index)
 {
     if (index < decompSize) {
         return decompBuffer[index];
@@ -358,10 +358,10 @@ bool dwgCompressor::buffersGood(void)
 }
 
 void dwgCompressor::decrypt18Hdr(duint8 *buf, duint64 size, duint64 offset){
-    duint8 max = size / 4;
-    duint32 secMask = 0x4164536b ^ offset;
+    duint64 max = size / 4;
+    duint32 secMask = 0x4164536b ^ static_cast<duint32>(offset);
     duint32* pHdr = reinterpret_cast<duint32*>(buf);
-    for (duint8 j = 0; j < max; j++)
+    for (duint64 j = 0; j < max; j++)
         *pHdr++ ^= secMask;
 }
 
@@ -429,18 +429,18 @@ bool dwgCompressor::decompress21(duint8 *cbuf, duint8 *dbuf, duint64 csize, duin
                 DRW_DBG("\nWARNING dwgCompressor::decompress21 => sourceOffset> dstIndex.\n");
                 DRW_DBG("csize = "); DRW_DBG(compressedSize); DRW_DBG("  srcIndex = "); DRW_DBG(compressedPos);
                 DRW_DBG("\ndsize = "); DRW_DBG(decompSize); DRW_DBG("  dstIndex = "); DRW_DBG(decompPos);
-                sourceOffset = decompPos;
+                sourceOffset = static_cast<duint32>(decompPos);
             }
             //prevent crash with corrupted data
             if (length > decompSize - decompPos){
                 DRW_DBG("\nWARNING dwgCompressor::decompress21 => length > dsize - dstIndex.\n");
                 DRW_DBG("csize = "); DRW_DBG(compressedSize); DRW_DBG("  srcIndex = "); DRW_DBG(compressedPos);
                 DRW_DBG("\ndsize = "); DRW_DBG(decompSize); DRW_DBG("  dstIndex = "); DRW_DBG(decompPos);
-                length = decompSize - decompPos;
+                length = static_cast<duint32>(decompSize - decompPos);
                 compressedPos = compressedSize; //force exit
                 compressedGood = false;
             }
-            sourceOffset = decompPos - sourceOffset;
+            sourceOffset = static_cast<duint32>(decompPos) - sourceOffset;
             for (duint32 i=0; i< length; i++)
                 decompSet( decompByte( sourceOffset + i));
 
