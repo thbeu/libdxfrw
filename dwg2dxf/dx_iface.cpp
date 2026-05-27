@@ -17,7 +17,7 @@
 #include "libdxfrw.h"
 
 
-bool dx_iface::fileImport(const std::string& fileI, dx_data *fData, bool debug){
+bool dx_iface::fileImport(const std::string& fileI, dx_data *fData){
     unsigned int found = fileI.find_last_of(".");
     std::string fileExt = fileI.substr(found+1);
     std::transform(fileExt.begin(), fileExt.end(),fileExt.begin(), ::toupper);
@@ -27,25 +27,13 @@ bool dx_iface::fileImport(const std::string& fileI, dx_data *fData, bool debug){
     if (fileExt == "DXF"){
         //loads dxf
         dxfRW* dxf = new dxfRW(fileI.c_str());
-        if (debug) {
-            dxf->setDebug(DRW::DebugLevel::Debug);
-        }
         bool success = dxf->read(this, false);
-        if (!success) {
-            std::cout << "DXF file error: format " << dxf->getVersion() << " error " << dxf->getError() << std::endl;
-        }
         delete dxf;
         return success;
     } else if (fileExt == "DWG"){
         //loads dwg
         dwgR* dwg = new dwgR(fileI.c_str());
-        if (debug) {
-            dwg->setDebug(DRW::DebugLevel::Debug);
-        }
         bool success = dwg->read(this, false);
-        if (!success) {
-            std::cout << "DWG file error: format " << dwg->getVersion() << " error " << dwg->getError() << std::endl;
-        }
         delete dwg;
         return success;
     }
@@ -53,15 +41,13 @@ bool dx_iface::fileImport(const std::string& fileI, dx_data *fData, bool debug){
     return false;
 }
 
-bool dx_iface::fileExport(const std::string& file, DRW::Version v, bool binary, dx_data *fData, bool debug){
+bool dx_iface::fileExport(const std::string& file, DRW::Version v, bool binary, dx_data *fData){
     cData = fData;
     dxfW = new dxfRW(file.c_str());
-    if (debug) {
-        dxfW->setDebug(DRW::DebugLevel::Debug);
-    }
     bool success = dxfW->write(this, v, binary);
     delete dxfW;
     return success;
+
 }
 
 void dx_iface::writeEntity(DRW_Entity* e){
@@ -80,6 +66,12 @@ void dx_iface::writeEntity(DRW_Entity* e){
         break;
     case DRW::SOLID:
         dxfW->writeSolid(static_cast<DRW_Solid*>(e));
+        break;
+    case DRW::DXF_TRACE:
+        dxfW->writeTrace(static_cast<DRW_Trace*>(e));
+        break;
+    case DRW::E3DFACE:
+        dxfW->write3dface(static_cast<DRW_3Dface*>(e));
         break;
     case DRW::ELLIPSE:
         dxfW->writeEllipse(static_cast<DRW_Ellipse*>(e));

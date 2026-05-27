@@ -1,10 +1,13 @@
-add_definitions(-Wall)
-include_directories(../src)
+add_executable(dwg2dxf
+    main.cpp
+    dx_iface.cpp
+)
 
-include(GNUInstallDirs)
+target_link_libraries(dwg2dxf PRIVATE dxfrw)
 
-add_executable(dwg2dxf dx_iface.cpp main.cpp dx_iface.h dx_data.h)
-target_link_libraries(dwg2dxf dxfrw)
+target_include_directories(dwg2dxf PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/src
+)
 
-install(TARGETS dwg2dxf DESTINATION "${CMAKE_INSTALL_BINDIR}")
-install(FILES dwg2dxf.1 DESTINATION "${CMAKE_INSTALL_MANDIR}/man1")
+install(TARGETS dwg2dxf RUNTIME DESTINATION bin)
