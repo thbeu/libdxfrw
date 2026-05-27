@@ -14,8 +14,6 @@
 #define DX_DATA_H
 #include "libdxfrw.h"
 
-#include <list>
-
 //class to store image data and path from DRW_ImageDef
 class dx_ifaceImg : public DRW_Image {
 public:

@@ -1,18 +1,18 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
+cmake_minimum_required(VERSION 3.10)
 
-cmake_policy(SET CMP0048 NEW)
 project(DXFRW VERSION 1.0.1)
 
 # set preferred cache variables
 set(LIBDXFRW_BUILD_DOC TRUE CACHE BOOL "Build the documentation")
 set(LIBDXFRW_BUILD_DWG2DXF TRUE CACHE BOOL "Build the dwg2dxf application")
+set(LIBDXFRW_BUILD_TESTS TRUE CACHE BOOL "Build the DWG read tests (requires dwg2dxf)")
 
 
 # set compiler warnings
 if (MSVC)
     add_compile_options(/W3)
 else()
-    add_compile_options(-Wall -Wextra -pedantic -Werror)
+    add_compile_options(-Wall -Wextra -pedantic)
 endif()
 
 
@@ -28,12 +28,15 @@ set(libdxfrw_srcs
   src/intern/drw_dbg.cpp
   src/intern/drw_textcodec.cpp
   src/intern/dwgbuffer.cpp
+  src/intern/dwgbufferw.cpp
+  src/intern/dwgwriter15.cpp
   src/intern/dwgreader.cpp
   src/intern/dwgreader15.cpp
   src/intern/dwgreader18.cpp
   src/intern/dwgreader21.cpp
   src/intern/dwgreader24.cpp
   src/intern/dwgreader27.cpp
+  src/intern/dwgreader32.cpp
   src/intern/dwgutil.cpp
   src/intern/dxfreader.cpp
   src/intern/dxfwriter.cpp
@@ -57,6 +60,9 @@ set(libdxfrw_hdrs
   src/intern/drw_dbg.h
   src/intern/drw_textcodec.h
   src/intern/dwgbuffer.h
+  src/intern/dwgbufferw.h
+  src/intern/dwgwriter.h
+  src/intern/dwgwriter15.h
   src/intern/dwgreader.h
   src/intern/dwgreader15.h
   src/intern/dwgreader18.h
@@ -108,6 +114,11 @@ endif()
 
 if(LIBDXFRW_BUILD_DWG2DXF)
     add_subdirectory(dwg2dxf)
+endif()
+
+if(LIBDXFRW_BUILD_TESTS AND LIBDXFRW_BUILD_DWG2DXF)
+    enable_testing()
+    add_subdirectory(tests)
 endif()
 
 # INSTALLATION

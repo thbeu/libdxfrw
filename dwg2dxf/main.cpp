@@ -53,7 +53,7 @@ DRW::Version checkVersion(std::string param){
     return DRW::UNKNOWNV;
 }
 
-bool convertFile(std::string inName, std::string outName, DRW::Version ver, bool binary, bool overwrite, bool debug){
+bool convertFile(std::string inName, std::string outName, DRW::Version ver, bool binary, bool overwrite){
     bool badState = false;
     //verify if input file exist
     std::ifstream ifs;
@@ -73,7 +73,9 @@ bool convertFile(std::string inName, std::string outName, DRW::Version ver, bool
         if (!overwrite){
             std::cout << "File " << outName << " already exist, overwrite Y/N ?" << std::endl;
             int c = getchar();
-            if (! ('y' == c || 'Y' == c)) {
+            if (c == 'Y' || c=='y')
+                ;
+            else {
                 std::cout << "Cancelled.";
                 return false;
             }
@@ -84,15 +86,34 @@ bool convertFile(std::string inName, std::string outName, DRW::Version ver, bool
     dx_data fData;
     //First read a dwg or dxf file
     dx_iface *input = new dx_iface();
-    badState = input->fileImport( inName, &fData, debug);
+    badState = input->fileImport( inName, &fData );
     if (!badState) {
         std::cout << "Error reading file " << inName << std::endl;
         return false;
     }
 
+    // If no version specified, use the source file's version
+    if (ver == DRW::UNKNOWNV) {
+        auto it = fData.headerC.vars.find("$ACADVER");
+        if (it != fData.headerC.vars.end()) {
+            std::string acadVer = *(it->second->content.s);
+            if (acadVer == "AC1006") ver = DRW::AC1006;
+            else if (acadVer == "AC1009") ver = DRW::AC1009;
+            else if (acadVer == "AC1012") ver = DRW::AC1012;
+            else if (acadVer == "AC1014") ver = DRW::AC1014;
+            else if (acadVer == "AC1015") ver = DRW::AC1015;
+            else if (acadVer == "AC1018") ver = DRW::AC1018;
+            else if (acadVer == "AC1021") ver = DRW::AC1021;
+            else if (acadVer == "AC1024") ver = DRW::AC1024;
+            else if (acadVer == "AC1027") ver = DRW::AC1027;
+            else if (acadVer == "AC1032") ver = DRW::AC1032;
+        }
+        if (ver == DRW::UNKNOWNV) ver = DRW::AC1021; // fallback
+    }
+
     //And write a dxf file
     dx_iface *output = new dx_iface();
-    badState = output->fileExport(outName, ver, binary, &fData, debug);
+    badState = output->fileExport(outName, ver, binary, &fData);
     delete input;
     delete output;
 
@@ -104,7 +125,6 @@ int main(int argc, char *argv[]) {
     bool binary = false;
     bool overwrite = false;
     bool batch = false;
-    bool debug = false;
     std::string outName;
     DRW::Version ver = DRW::UNKNOWNV;
     if (argc < 3) {
@@ -126,8 +146,6 @@ int main(int argc, char *argv[]) {
                     overwrite = true;
                 else if (param.at(1) == 'B')
                     batch = true;
-                else if (tolower(param.at(1)) == 'd')
-                    debug = true;
                 else {
                     ver = checkVersion(param);
                     if (ver == DRW::UNKNOWNV) {
@@ -146,15 +164,11 @@ int main(int argc, char *argv[]) {
     }
 
     if (!batch){ //no batch mode, only one file
-        bool ok = convertFile(fileName, outName, ver, binary, overwrite, debug);
-        if (ok) {
-            std::cout << "Success: converted " << fileName << " to " << outName << std::endl;
+        bool ok = convertFile(fileName, outName, ver, binary, overwrite);
+        if (ok)
             return 0;
-        }
-        else {
-            std::cout << "\nConversion failed" << std::endl;
+        else
             return 1;
-        }
 
     }
 
@@ -193,7 +207,7 @@ int main(int argc, char *argv[]) {
         unsigned found = input.find_last_of("/\\");
         std::string output = outName + input.substr(found+1);
         std::cout << "Converting file " << input << " to " << output << std::endl;
-        bool ok = convertFile(input, output, ver, binary, overwrite, debug);
+        bool ok = convertFile(input, output, ver, binary, overwrite);
         if (!ok)
             std::cout << "Failed" << std::endl;
     }
