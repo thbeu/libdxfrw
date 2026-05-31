@@ -1149,16 +1149,16 @@ bool dxfRW::writeLWPolyline(DRW_LWPolyline *ent){
             writer->writeDouble(39, ent->thickness);
         for (int i = 0;  i< ent->vertexnum; i++){
             auto& v = ent->vertlist.at(i);
-            writer->writeDouble(10, v->x);
-            writer->writeDouble(20, v->y);
-            if (v->stawidth != 0)
-                writer->writeDouble(40, v->stawidth);
-            if (v->endwidth != 0)
-                writer->writeDouble(41, v->endwidth);
-            if (v->bulge != 0)
-                writer->writeDouble(42, v->bulge);
-            if (version > DRW::AC1021 && v->identifier != 0)
-                writer->writeInt32(91, v->identifier);
+            writer->writeDouble(10, v.x);
+            writer->writeDouble(20, v.y);
+            if (v.stawidth != 0)
+                writer->writeDouble(40, v.stawidth);
+            if (v.endwidth != 0)
+                writer->writeDouble(41, v.endwidth);
+            if (v.bulge != 0)
+                writer->writeDouble(42, v.bulge);
+            if (version > DRW::AC1021 && v.identifier != 0)
+                writer->writeInt32(91, v.identifier);
         }
         // extrusion(210/220/230) — UCS/extruded plines flatten to WCS without it
         // (reader reads it, DWG encoder preserves it). Default 0,0,1.
@@ -1310,22 +1310,22 @@ bool dxfRW::writeSpline(DRW_Spline *ent){
         writer->writeInt16(74, static_cast<int>(ent->fitlist.size()));
         writer->writeDouble(42, ent->tolknot);
         writer->writeDouble(43, ent->tolcontrol);
-        writer->writeDouble(44, ent->tolfit);
+    writer->writeDouble(44, ent->tolfit);
         for (double k : ent->knotslist)
             writer->writeDouble(40, k);
         // Control points with interleaved weights (when present)
         for (std::size_t i = 0; i < ent->controllist.size(); ++i) {
             const auto& crd = ent->controllist[i];
-            writer->writeDouble(10, crd->x);
-            writer->writeDouble(20, crd->y);
-            writer->writeDouble(30, crd->z);
+            writer->writeDouble(10, crd.x);
+            writer->writeDouble(20, crd.y);
+            writer->writeDouble(30, crd.z);
             if (i < ent->weightlist.size())
                 writer->writeDouble(41, ent->weightlist[i]);
         }
         for (const auto& crd : ent->fitlist) {
-            writer->writeDouble(11, crd->x);
-            writer->writeDouble(21, crd->y);
-            writer->writeDouble(31, crd->z);
+            writer->writeDouble(11, crd.x);
+            writer->writeDouble(21, crd.y);
+            writer->writeDouble(31, crd.z);
         }
         // Start/end tangent vectors (fit-point splines, codes 12/22/32 and 13/23/33)
         if (ent->tgStart.x != 0.0 || ent->tgStart.y != 0.0 || ent->tgStart.z != 0.0) {
@@ -1371,17 +1371,17 @@ bool dxfRW::writeHatch(DRW_Hatch *ent){
                     pl = dynamic_cast<DRW_LWPolyline*>(loop->objlist.at(0).get());
                 const bool hasBulge = pl && std::any_of(
                     pl->vertlist.begin(), pl->vertlist.end(),
-                    [](const std::shared_ptr<DRW_Vertex2D>& v){ return v && v->bulge != 0.0; });
+                    [](const DRW_Vertex2D& v){ return v.bulge != 0.0; });
                 writer->writeInt16(72, hasBulge ? 1 : 0);
                 writer->writeInt16(73, pl ? (pl->flags & 1) : 0); // is-closed
                 const int nv = pl ? static_cast<int>(pl->vertlist.size()) : 0;
                 writer->writeInt16(93, nv);
                 for (int v = 0; v < nv; ++v) {
-                    const auto &vtx = pl->vertlist.at(v);
-                    writer->writeDouble(10, vtx->x);
-                    writer->writeDouble(20, vtx->y);
+                    const auto& vtx = pl->vertlist.at(v);
+                    writer->writeDouble(10, vtx.x);
+                    writer->writeDouble(20, vtx.y);
                     if (hasBulge)
-                        writer->writeDouble(42, vtx->bulge);
+                        writer->writeDouble(42, vtx.bulge);
                 }
                 // Emit source boundary handles (associative hatch) or 0.
                 if (!loop->m_boundaryHandles.empty()) {
@@ -1443,9 +1443,8 @@ bool dxfRW::writeHatch(DRW_Hatch *ent){
                         }
                         for (size_t k = 0; k < sp->controllist.size(); ++k) {
                             const auto& cp = sp->controllist[k];
-                            if (!cp) continue;
-                            writer->writeDouble(10, cp->x);
-                            writer->writeDouble(20, cp->y);
+                            writer->writeDouble(10, cp.x);
+                            writer->writeDouble(20, cp.y);
                             if (rational) {
                                 double w = (k < sp->weightlist.size()) ? sp->weightlist[k] : 1.0;
                                 writer->writeDouble(42, w);
@@ -1453,9 +1452,8 @@ bool dxfRW::writeHatch(DRW_Hatch *ent){
                         }
                         writer->writeInt32(97, static_cast<int>(sp->fitlist.size()));
                         for (const auto& fp : sp->fitlist) {
-                            if (!fp) continue;
-                            writer->writeDouble(11, fp->x);
-                            writer->writeDouble(21, fp->y);
+                            writer->writeDouble(11, fp.x);
+                            writer->writeDouble(21, fp.y);
                         }
                         // start/end tangents (codes 12/22, 13/23)
                         if (sp->tgStart.x != 0.0 || sp->tgStart.y != 0.0) {

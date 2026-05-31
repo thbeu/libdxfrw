@@ -985,57 +985,28 @@ public:
         this->flags = p.flags;
 		this->extPoint = p.extPoint;
         this->vertexnum = p.vertexnum;
-        for (unsigned i=0; i<p.vertlist.size(); i++)// RLZ ok or new
-		  this->vertlist.push_back(
-					std::make_shared<DRW_Vertex2D>(*p.vertlist.at(i))
-					);
+        this->vertlist = p.vertlist;  // value semantics: vector copies elements
         // Deep-copy the base extData too: the implicit DRW_Entity(p) base copy
         // shallow-copies the shared_ptr XDATA variants, but parseAttribs mutates
-        // them, so two copies must not share. (`vertex` stays null in a fresh
-        // copy; `curr` is a private parse-transient cursor — its shallow copy is
-        // benign since reset() clears it before reuse.)
+        // them, so two copies must not share.
         extData.clear();
         for (const auto& v : p.extData)
             extData.push_back(v ? std::make_shared<DRW_Variant>(*v) : nullptr);
     }
-    // Deep-copy assignment to match the deep-copy constructor; the implicit
-    // operator= would shallow-copy the shared_ptr vertlist, so two assigned
-    // polylines would alias (and mutate) each other's vertices (Rule of 3).
-    DRW_LWPolyline& operator=(const DRW_LWPolyline& p) {
-        if (this != &p) {
-            DRW_Entity::operator=(p);
-            eType = DRW::LWPOLYLINE;
-            elevation = p.elevation;
-            thickness = p.thickness;
-            width = p.width;
-            flags = p.flags;
-            extPoint = p.extPoint;
-            vertexnum = p.vertexnum;
-            vertlist.clear();
-            for (const auto& v : p.vertlist)
-                vertlist.push_back(std::make_shared<DRW_Vertex2D>(*v));
-            vertex.reset();  // transient build pointer — do not alias p's vertlist
-            // Deep-copy base extData (DRW_Entity::operator= aliased the shared
-            // XDATA variants, which parseAttribs mutates).
-            extData.clear();
-            for (const auto& v : p.extData)
-                extData.push_back(v ? std::make_shared<DRW_Variant>(*v) : nullptr);
-        }
-        return *this;
-    }
+    // No custom assignment operator needed: value-type vertlist and the
+    // inherited DRW_Entity::operator= cover deep-copy correctly.
 
     virtual void applyExtrusion() override;
     void addVertex (DRW_Vertex2D v) {
-		std::shared_ptr<DRW_Vertex2D> vert = std::make_shared<DRW_Vertex2D>(v);
-        vertlist.push_back(vert);
+        vertlist.push_back(v);
     }
-	std::shared_ptr<DRW_Vertex2D> addVertex () {
-		std::shared_ptr<DRW_Vertex2D> vert = std::make_shared<DRW_Vertex2D>();
-        vert->stawidth = 0;
-        vert->endwidth = 0;
-        vert->bulge = 0;
-        vertlist.push_back(vert);
-        return vert;
+	DRW_Vertex2D* addVertex () {
+        vertlist.emplace_back();
+        auto& vert = vertlist.back();
+        vert.stawidth = 0;
+        vert.endwidth = 0;
+        vert.bulge = 0;
+        return &vert;
     }
 
 protected:
@@ -1050,8 +1021,8 @@ public:
     double elevation;         /*!< elevation, code 38 */
     double thickness;         /*!< thickness, code 39 */
     DRW_Coord extPoint;       /*!<  Dir extrusion normal vector, code 210, 220 & 230 */
-	std::shared_ptr<DRW_Vertex2D> vertex;       /*!< current vertex to add data */
-	std::vector<std::shared_ptr<DRW_Vertex2D>> vertlist;  /*!< vertex list */
+	DRW_Vertex2D *vertex{nullptr};       /*!< current vertex to add data */
+	std::vector<DRW_Vertex2D> vertlist;  /*!< vertex list */
 };
 
 //! One MLINE vertex carries a baseline point plus per-line segment params.
@@ -1537,12 +1508,12 @@ public:
 
     std::vector<double> knotslist;           /*!< knots list, code 40 */
     std::vector<double> weightlist;          /*!< weight list, code 41 */
-    std::vector<std::shared_ptr<DRW_Coord>> controllist;  /*!< control points list, code 10, 20 & 30 */
-    std::vector<std::shared_ptr<DRW_Coord>> fitlist;      /*!< fit points list, code 11, 21 & 31 */
+    std::vector<DRW_Coord> controllist;  /*!< control points list, code 10, 20 & 30 */
+    std::vector<DRW_Coord> fitlist;      /*!< fit points list, code 11, 21 & 31 */
 
 private:
-    std::shared_ptr<DRW_Coord> controlpoint;   /*!< current control point to add data */
-    std::shared_ptr<DRW_Coord> fitpoint;       /*!< current fit point to add data */
+    DRW_Coord *controlpoint{nullptr};   /*!< current control point to add data */
+    DRW_Coord *fitpoint{nullptr};       /*!< current fit point to add data */
 };
 
 //! Class to handle helix entity (AcDbHelix, custom class 503)
@@ -1693,7 +1664,7 @@ private:
         arc.reset();
         ellipse.reset();
         spline.reset();
-        plvert.reset();
+        plvert = nullptr;
         m_splineNfitSet = false;
     }
 
@@ -1737,7 +1708,7 @@ private:
     std::shared_ptr<DRW_Spline> spline;
     std::shared_ptr<DRW_LWPolyline> pline;
     std::shared_ptr<DRW_Point> pt;
-    std::shared_ptr<DRW_Vertex2D> plvert;
+    DRW_Vertex2D *plvert{nullptr};
     bool ispol;
     /* True after the first code-97 in the current spline edge (= nfit set);
        the second code-97 while spline is active is the per-loop boundary
