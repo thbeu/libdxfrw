@@ -241,23 +241,26 @@ bool dwgReader18::parseDataPage(const dwgSectionInfo &si/*, std::uint8_t *dData*
         DRW_DBG("\n    Data size= "); DRW_DBGH(pi.dataSize);
         DRW_DBG("\n    Start offset= "); DRW_DBGH(pi.startOffset); DRW_DBG("\n");
         dwgBuffer bufHdr(hdrData, 32, &decoder);
-        DRW_DBG("      section page type= "); DRW_DBGH(bufHdr.getRawLong32());
-        DRW_DBG("\n      section number= "); DRW_DBGH(bufHdr.getRawLong32());
+        { std::uint32_t pageType = bufHdr.getRawLong32();
+          DRW_DBG("      section page type= "); DRW_DBGH(pageType); }
+        { std::uint32_t secNum = bufHdr.getRawLong32();
+          DRW_DBG("\n      section number= "); DRW_DBGH(secNum); }
         pi.cSize = bufHdr.getRawLong32();
         DRW_DBG("\n      data size (compressed)= ");
         DRW_DBGH(pi.cSize);
         DRW_DBG(" dec ");
         DRW_DBG(static_cast<unsigned long long>(pi.cSize));
         pi.uSize = bufHdr.getRawLong32();
-        DRW_DBG("\n      page size (decompressed)= ");
-        DRW_DBGH(pi.uSize);
-        DRW_DBG(" dec ");
-        DRW_DBG(static_cast<unsigned long long>(pi.uSize));
+        DRW_DBG("\n      page size (decompressed)= "); DRW_DBGH(pi.uSize); DRW_DBG(" dec "); DRW_DBG(static_cast<unsigned long long>(pi.uSize));
         std::uint32_t headerStartOffset = bufHdr.getRawLong32();
         DRW_DBG("\n      start offset (in decompressed buffer)= "); DRW_DBGH(headerStartOffset);
-        DRW_DBG("\n      unknown= "); DRW_DBGH(bufHdr.getRawLong32());
-        DRW_DBG("\n      header checksum= "); DRW_DBGH(bufHdr.getRawLong32());
-        DRW_DBG("\n      data checksum= "); DRW_DBGH(bufHdr.getRawLong32()); DRW_DBG("\n");
+        { std::uint32_t unk = bufHdr.getRawLong32();
+          DRW_DBG("\n      unknown= "); DRW_DBGH(unk); }
+        { std::uint32_t hdrCrc = bufHdr.getRawLong32();
+          DRW_DBG("\n      header checksum= "); DRW_DBGH(hdrCrc); }
+        { std::uint32_t dataCrc = bufHdr.getRawLong32();
+          DRW_DBG("\n      data checksum= "); DRW_DBGH(dataCrc); }
+        DRW_DBG("\n");
 
         //get compressed data
         if (pi.address > UINT64_MAX - 32 || pi.cSize > pi.size
