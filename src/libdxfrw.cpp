@@ -931,14 +931,14 @@ bool dxfRW::writeLWPolyline(DRW_LWPolyline *ent){
             writer->writeDouble(39, ent->thickness);
         for (int i = 0;  i< ent->vertexnum; i++){
             auto& v = ent->vertlist.at(i);
-            writer->writeDouble(10, v->x);
-            writer->writeDouble(20, v->y);
-            if (v->stawidth != 0)
-                writer->writeDouble(40, v->stawidth);
-            if (v->endwidth != 0)
-                writer->writeDouble(41, v->endwidth);
-            if (v->bulge != 0)
-                writer->writeDouble(42, v->bulge);
+            writer->writeDouble(10, v.x);
+            writer->writeDouble(20, v.y);
+            if (v.stawidth != 0)
+                writer->writeDouble(40, v.stawidth);
+            if (v.endwidth != 0)
+                writer->writeDouble(41, v.endwidth);
+            if (v.bulge != 0)
+                writer->writeDouble(42, v.bulge);
         }
     } else {
         //RLZ: TODO convert lwpolyline in polyline (not exist in acad 12)
@@ -1076,17 +1076,17 @@ bool dxfRW::writeSpline(DRW_Spline *ent){
             writer->writeDouble(41, ent->weightlist.at(i));
         }
         for (int i = 0;  i< ent->ncontrol; i++){
-            auto crd = ent->controllist.at(i);
-            writer->writeDouble(10, crd->x);
-            writer->writeDouble(20, crd->y);
-            writer->writeDouble(30, crd->z);
+            const auto& crd = ent->controllist.at(i);
+            writer->writeDouble(10, crd.x);
+            writer->writeDouble(20, crd.y);
+            writer->writeDouble(30, crd.z);
         }
         //fit points: required for splinepoints / fit-point-driven splines
         for (int i = 0;  i< ent->nfit; i++){
-            auto crd = ent->fitlist.at(i);
-            writer->writeDouble(11, crd->x);
-            writer->writeDouble(21, crd->y);
-            writer->writeDouble(31, crd->z);
+            const auto& crd = ent->fitlist.at(i);
+            writer->writeDouble(11, crd.x);
+            writer->writeDouble(21, crd.y);
+            writer->writeDouble(31, crd.z);
         }
     } else {
         //RLZ: TODO convert spline in polyline (not exist in acad 12)
@@ -1168,9 +1168,8 @@ bool dxfRW::writeHatch(DRW_Hatch *ent){
                         }
                         for (size_t k = 0; k < sp->controllist.size(); ++k) {
                             const auto& cp = sp->controllist[k];
-                            if (!cp) continue;
-                            writer->writeDouble(10, cp->x);
-                            writer->writeDouble(20, cp->y);
+                            writer->writeDouble(10, cp.x);
+                            writer->writeDouble(20, cp.y);
                             if (rational) {
                                 double w = (k < sp->weightlist.size()) ? sp->weightlist[k] : 1.0;
                                 writer->writeDouble(42, w);
@@ -1178,9 +1177,8 @@ bool dxfRW::writeHatch(DRW_Hatch *ent){
                         }
                         writer->writeInt32(97, static_cast<int>(sp->fitlist.size()));
                         for (const auto& fp : sp->fitlist) {
-                            if (!fp) continue;
-                            writer->writeDouble(11, fp->x);
-                            writer->writeDouble(21, fp->y);
+                            writer->writeDouble(11, fp.x);
+                            writer->writeDouble(21, fp.y);
                         }
                         break;
                     }
