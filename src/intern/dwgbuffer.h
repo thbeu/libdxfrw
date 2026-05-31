@@ -16,6 +16,7 @@
 #include <fstream>
 #include <sstream>
 #include <memory>
+#include <cstring>
 #include "../drw_base.h"
 
 class DRW_Coord;
@@ -32,6 +33,8 @@ public:
     virtual bool setPos(duint64 p) = 0;
     virtual bool good() const = 0;
     virtual dwgBasicStream* clone() const = 0;
+    // Direct buffer access for fast-path reads (returns null if not memory-backed)
+    virtual duint8* getBuffer() const { return nullptr; }
 };
 
 class dwgFileStream: public dwgBasicStream{
@@ -40,18 +43,26 @@ public:
         :stream{s}
     {
         stream->seekg (0, std::ios::end);
-        sz = stream->tellg();
+        sz = static_cast<duint64>(stream->tellg());
         stream->seekg(0, std::ios_base::beg);
+        // Pre-read entire file into memory for faster random access
+        buf.reset(new duint8[static_cast<size_t>(sz)]);
+        stream->read(reinterpret_cast<char*>(buf.get()), static_cast<std::streamsize>(sz));
+        isOk = stream->good();
     }
     bool read(duint8* s, duint64 n) override;
     duint64 size() const override{return sz;}
-    duint64 getPos() const override{return stream->tellg();}
+    duint64 getPos() const override{return pos;}
     bool setPos(duint64 p) override;
-    bool good() const override{return stream->good();}
+    bool good() const override{return isOk;}
     dwgBasicStream* clone() const override{return new dwgFileStream(stream);}
+    duint8* getBuffer() const override{return buf.get();}
 private:
     std::ifstream *stream{nullptr};
+    std::unique_ptr<duint8[]> buf;
     duint64 sz{0};
+    duint64 pos{0};
+    bool isOk{true};
 };
 
 class dwgCharStream: public dwgBasicStream{
@@ -60,12 +71,28 @@ public:
         :stream{buf}
         ,sz{s}
     {}
-    bool read(duint8* s, duint64 n) override;
+    bool read(duint8* s, duint64 n) override {
+        if ( n > (sz - pos) ) {
+            isOk = false;
+            return false;
+        }
+        std::memcpy(s, stream + pos, static_cast<size_t>(n));
+        pos += n;
+        return true;
+    }
     duint64 size() const override {return sz;}
     duint64 getPos() const override {return pos;}
-    bool setPos(duint64 p) override;
+    bool setPos(duint64 p) override {
+        if (p > sz) {
+            isOk = false;
+            return false;
+        }
+        pos = p;
+        return true;
+    }
     bool good() const override {return isOk;}
     dwgBasicStream* clone() const override {return new dwgCharStream(stream, sz);}
+    duint8* getBuffer() const override{return nullptr;}
 private:
     duint8 *stream{nullptr};
     duint64 sz{0};
@@ -75,12 +102,17 @@ private:
 
 class dwgBuffer {
 public:
+    struct DirectTag {};
     dwgBuffer(std::ifstream *stream, DRW_TextCodec *decoder = nullptr);
     dwgBuffer(duint8 *buf, duint64 size, DRW_TextCodec *decoder= nullptr);
+    dwgBuffer(DirectTag, duint8 *buf, duint64 size, DRW_TextCodec *decoder)
+        :decoder{decoder}, maxSize{size}, directBuf{nullptr}, directGood{true} {}
     dwgBuffer( const dwgBuffer& org );
+    dwgBuffer( dwgBuffer&& org ) = default;
     dwgBuffer& operator=( const dwgBuffer& org );
+    dwgBuffer& operator=( dwgBuffer&& org ) = default;
     virtual ~dwgBuffer() = default;
-    duint64 size() const {return filestr->size();}
+    duint64 size() const {return directBuf ? maxSize : filestr->size();}
     bool setPosition(duint64 pos);
     duint64 getPosition() const;
     void resetPosition(){setPosition(0); setBitPos(0);}
@@ -150,9 +182,15 @@ public:
 
     duint16 getBERawShort16();  //RS big-endian order
 
-    bool isGood() const {return filestr->good();}
+    bool isGood() const {return directBuf ? (directGood && directPos <= maxSize) : filestr->good();}
     bool getBytes(duint8 *buf, duint64 size);
-    dint64 numRemainingBytes() const {return maxSize- filestr->getPos();}
+    dint64 numRemainingBytes() const {return directBuf ? (maxSize - directPos) : (maxSize- filestr->getPos());}
+    void enableDirectBuf(duint8 * /*buf*/) { /* DISABLED for testing */ }
+    duint8* getDirectPtr() const { return directBuf ? directBuf + directPos : nullptr; }
+    void reinitDirect(duint8 * /*buf*/, duint64 size, DRW_TextCodec *dc) {
+        /* directBuf DISABLED for testing */
+        maxSize = size; decoder = dc; bitPos = 0; currByte = 0;
+    }
 
     duint16 crc8(duint16 dx,dint64 start,dint64 end);
     duint32 crc32(duint32 seed,dint32 start,dint32 end);
@@ -191,6 +229,10 @@ private:
     duint64 maxSize{0};
     duint8 currByte{0};
     duint8 bitPos{0};
+    // Fast-path: direct buffer access (avoids virtual dispatch)
+    duint8* directBuf{nullptr};
+    duint64 directPos{0};
+    bool directGood{true};
 
     UTF8STRING get8bitStr();
     UTF8STRING get16bitStr(duint32 textSize, bool nullTerm = true);

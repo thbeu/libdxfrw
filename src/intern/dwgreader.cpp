@@ -52,13 +52,25 @@ void dwgReader::parseAttribs(DRW_Entity* e) {
 
     duint32 ltref =e->lTypeH.ref;
     duint32 lyref =e->layerH.ref;
-    auto lt_it = ltypemap.find(ltref);
-    if (lt_it != ltypemap.end()) {
-        e->lineType = (lt_it->second)->name;
+    if (ltref == m_cachedLtRef) {
+        e->lineType = m_cachedLtName;
+    } else {
+        auto lt_it = ltypemap.find(ltref);
+        if (lt_it != ltypemap.end()) {
+            e->lineType = (lt_it->second)->name;
+            m_cachedLtRef = ltref;
+            m_cachedLtName = e->lineType;
+        }
     }
-    auto ly_it = layermap.find(lyref);
-    if (ly_it != layermap.end()) {
-        e->layer = (ly_it->second)->name;
+    if (lyref == m_cachedLyRef) {
+        e->layer = m_cachedLyName;
+    } else {
+        auto ly_it = layermap.find(lyref);
+        if (ly_it != layermap.end()) {
+            e->layer = (ly_it->second)->name;
+            m_cachedLyRef = lyref;
+            m_cachedLyName = e->layer;
+        }
     }
 
     // Drain any deferred EED handle lookups now that the symbol tables
@@ -155,7 +167,7 @@ bool dwgReader::readDwgHeader(DRW_Header& hdr, dwgBuffer *buf, dwgBuffer *hBuf){
 bool dwgReader::checkSentinel(dwgBuffer *buf, enum secEnum::DWGSection, bool start){
     DRW_UNUSED(start);
     for (int i=0; i<16;i++) {
-        DRW_DBGH(buf->getRawChar8()); DRW_DBG(" ");
+        duint8 c = buf->getRawChar8(); DRW_DBGH(c); DRW_DBG(" ");
     }
     return true;
 }

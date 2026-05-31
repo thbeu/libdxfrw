@@ -114,34 +114,17 @@ union typeCast  {
 bool dwgFileStream::setPos(duint64 p){
     if (p >= sz)
         return false;
-
-    stream->seekg(p);
-    return stream->good();
-}
-
-bool dwgFileStream::read(duint8* s, duint64 n){
-    stream->read (reinterpret_cast<char*>(s),n);
-    return stream->good();
-}
-
-bool dwgCharStream::setPos(duint64 p){
-    if (p > size()) {
-        isOk = false;
-        return false;
-    }
-
     pos = p;
     return true;
 }
 
-bool dwgCharStream::read(duint8* s, duint64 n){
-    if ( n > (sz - pos) ) {
+bool dwgFileStream::read(duint8* s, duint64 n){
+    if (pos + n > sz) {
         isOk = false;
         return false;
     }
-    for (duint64 i=0; i<n; i++){
-        s[i]= stream[pos++];
-    }
+    std::memcpy(s, buf.get() + pos, static_cast<size_t>(n));
+    pos += n;
     return true;
 }
 
@@ -155,27 +138,38 @@ dwgBuffer::dwgBuffer(std::ifstream *stream, DRW_TextCodec *dc)
     :decoder{dc}
     ,filestr{new dwgFileStream(stream)}
     ,maxSize{filestr->size()}
+    ,directBuf{nullptr} // DISABLED for testing
 {}
 
 dwgBuffer::dwgBuffer( const dwgBuffer& org )
     :decoder{org.decoder}
-    ,filestr{org.filestr->clone()}
-    ,maxSize{filestr->size()}
+    ,filestr{org.filestr ? std::unique_ptr<dwgBasicStream>(org.filestr->clone()) : nullptr}
+    ,maxSize{org.maxSize}
     ,currByte{org.currByte}
     ,bitPos{org.bitPos}
+    ,directBuf{nullptr} // DISABLED for testing
+    ,directPos{0}
+    ,directGood{true}
 {}
 
 dwgBuffer& dwgBuffer::operator=( const dwgBuffer& org ){
-    filestr.reset( org.filestr->clone());
+    filestr.reset( org.filestr ? org.filestr->clone() : nullptr);
     decoder = org.decoder;
-    maxSize = filestr->size();
+    maxSize = org.maxSize;
     currByte = org.currByte;
     bitPos = org.bitPos;
+    directBuf = nullptr; // DISABLED for testing
+    directPos = 0;
+    directGood = true;
     return *this;
 }
 
 /**Gets the current byte position in buffer **/
 duint64 dwgBuffer::getPosition() const{
+     if (directBuf) {
+         if (bitPos != 0) return directPos - 1;
+         return directPos;
+     }
      if (bitPos != 0)
          return filestr->getPos() -1;
      return filestr->getPos();
@@ -184,16 +178,29 @@ duint64 dwgBuffer::getPosition() const{
 /**Sets the buffer position in pos byte, reset the bit position **/
 bool dwgBuffer::setPosition(duint64 pos){
     bitPos = 0;
-/*    if (pos>=maxSize)
-        return false;*/
+    if (directBuf) {
+        if (pos >= maxSize) { directGood = false; return false; }
+        directPos = pos;
+        directGood = true;
+        return true;
+    }
     return filestr->setPos(pos);
-//    return true;
 }
 
 //RLZ: Fails if ... ???
 void dwgBuffer::setBitPos(duint8 pos){
     if (pos>7)
         return;
+    if (directBuf) {
+        if (pos != 0 && bitPos == 0){
+            currByte = directBuf[directPos++];
+        }
+        if (pos == 0 && bitPos != 0){
+            directPos--;
+        }
+        bitPos = pos;
+        return;
+    }
     if (pos != 0 && bitPos == 0){
         duint8 buffer;
         filestr->read (&buffer,1);
@@ -208,6 +215,20 @@ void dwgBuffer::setBitPos(duint8 pos){
 bool dwgBuffer::moveBitPos(dint64 size){
     if (size == 0) return true;
 
+    if (directBuf) {
+        dint64 b = size + bitPos;
+        duint64 newPos = getPosition() + (b >> 3);
+        if (newPos >= maxSize) { directGood = false; return false; }
+        directPos = newPos;
+        bitPos = b & 7;
+        if (bitPos != 0){
+            if (directPos >= maxSize) { directGood = false; return false; }
+            currByte = directBuf[directPos++];
+        }
+        directGood = true;
+        return true;
+    }
+
     dint64 b= size + bitPos;
     filestr->setPos(getPosition() + (b >> 3) );
     bitPos = b & 7;
@@ -220,6 +241,16 @@ bool dwgBuffer::moveBitPos(dint64 size){
 
 /**Reads one Bit returns a char with value 0/1 (B) **/
 duint8 dwgBuffer::getBit(){
+    if (directBuf) {
+        if (bitPos == 0){
+            if (directPos >= maxSize) { directGood = false; return 0; }
+            currByte = directBuf[directPos++];
+        }
+        duint8 ret = (currByte >> (7 - bitPos) & 1);
+        bitPos += 1;
+        if (bitPos == 8) bitPos = 0;
+        return ret;
+    }
     if (!isGood()) return 0;
     duint8 buffer;
     duint8 ret = 0;
@@ -243,6 +274,25 @@ bool dwgBuffer::getBoolBit(){
 
 /**Reads two Bits returns a char (BB) **/
 duint8 dwgBuffer::get2Bits(){
+    if (directBuf) {
+        if (bitPos == 0){
+            if (directPos >= maxSize) { directGood = false; return 0; }
+            currByte = directBuf[directPos++];
+        }
+        bitPos += 2;
+        duint8 ret;
+        if (bitPos < 9)
+            ret = currByte >> (8 - bitPos);
+        else {
+            ret = currByte << 1;
+            if (directPos >= maxSize) { directGood = false; return 0; }
+            currByte = directBuf[directPos++];
+            bitPos = 1;
+            ret = ret | (currByte >> 7);
+        }
+        if (bitPos == 8) bitPos = 0;
+        return ret & 3;
+    }
     duint8 buffer = 0;
     duint8 ret = 0;
     if (bitPos == 0){
@@ -268,6 +318,25 @@ duint8 dwgBuffer::get2Bits(){
 
 /**Reads three Bits returns a char (3B) **/
 duint8 dwgBuffer::get3Bits(){
+    if (directBuf) {
+        if (bitPos == 0){
+            if (directPos >= maxSize) { directGood = false; return 0; }
+            currByte = directBuf[directPos++];
+        }
+        bitPos += 3;
+        duint8 ret;
+        if (bitPos < 9)
+            ret = currByte >> (8 - bitPos);
+        else {
+            ret = currByte << 1;
+            if (directPos >= maxSize) { directGood = false; return 0; }
+            currByte = directBuf[directPos++];
+            bitPos = 1;
+            ret = ret | (currByte >> 7);
+        }
+        if (bitPos == 8) bitPos = 0;
+        return ret & 7;
+    }
     duint8 buffer = 0;
     duint8 ret = 0;
     if (bitPos == 0){
@@ -348,6 +417,27 @@ double dwgBuffer::getBitDouble(){
     if (b == 1)
         return 1.0;
     else if (b == 0){
+        if (directBuf) {
+            if (directPos + 8 > maxSize) { directGood = false; return 0.0; }
+            if (bitPos == 0) {
+                double ret;
+                std::memcpy(&ret, directBuf + directPos, 8);
+                directPos += 8;
+                return ret;
+            }
+            // Non-aligned: shift 8 bytes through currByte
+            duint8 buffer[8];
+            const duint8 bp = bitPos;
+            const duint8 rbp = 8 - bp;
+            for (int i = 0; i < 8; i++) {
+                duint8 nb = directBuf[directPos++];
+                buffer[i] = static_cast<duint8>((currByte << bp) | (nb >> rbp));
+                currByte = nb;
+            }
+            double ret;
+            std::memcpy(&ret, buffer, 8);
+            return ret;
+        }
         duint8 buffer[8] = {0};
         if (bitPos != 0) {
             for (int i = 0; i < 8; i++)
@@ -374,6 +464,15 @@ DRW_Coord dwgBuffer::get3BitDouble(){
 
 /**Reads raw char 8 bits returns a unsigned char (RC) **/
 duint8 dwgBuffer::getRawChar8(){
+    if (directBuf) {
+        if (directPos >= maxSize) { directGood = false; return 0; }
+        duint8 buffer = directBuf[directPos++];
+        if (bitPos == 0) return buffer;
+        duint8 ret = currByte << bitPos;
+        currByte = buffer;
+        ret = ret | (currByte >> (8 - bitPos));
+        return ret;
+    }
     duint8 ret=0;
     duint8 buffer=0;
     filestr->read (&buffer,1);
@@ -389,6 +488,25 @@ duint8 dwgBuffer::getRawChar8(){
 
 /**Reads raw short 16 bits little-endian order, returns a unsigned short (RS) **/
 duint16 dwgBuffer::getRawShort16(){
+    if (directBuf) {
+        if (directPos + 2 > maxSize) { directGood = false; return 0; }
+        if (bitPos == 0) {
+            duint16 ret;
+            std::memcpy(&ret, directBuf + directPos, 2);
+            directPos += 2;
+            return ret;
+        }
+        duint8 buffer[2];
+        buffer[0] = directBuf[directPos++];
+        buffer[1] = directBuf[directPos++];
+        duint16 ret;
+        ret = static_cast<duint16>((static_cast<duint32>(buffer[0]) << 8) | buffer[1]);
+        ret = static_cast<duint16>(ret >> (8 - bitPos));
+        ret = static_cast<duint16>(ret | (static_cast<duint32>(currByte) << (8 + bitPos)));
+        currByte = buffer[1];
+        ret = static_cast<duint16>((ret << 8) | (ret >> 8));
+        return ret;
+    }
     duint8 buffer[2]={0,0};
     duint16 ret=0;
 
@@ -410,6 +528,26 @@ duint16 dwgBuffer::getRawShort16(){
 
 /**Reads raw double IEEE standard 64 bits returns a double (RD) **/
 double dwgBuffer::getRawDouble(){
+    if (directBuf) {
+        if (directPos + 8 > maxSize) { directGood = false; return 0.0; }
+        if (bitPos == 0) {
+            double ret;
+            std::memcpy(&ret, directBuf + directPos, 8);
+            directPos += 8;
+            return ret;
+        }
+        duint8 buffer[8];
+        const duint8 bp = bitPos;
+        const duint8 rbp = 8 - bp;
+        for (int i = 0; i < 8; i++) {
+            duint8 nb = directBuf[directPos++];
+            buffer[i] = static_cast<duint8>((currByte << bp) | (nb >> rbp));
+            currByte = nb;
+        }
+        double ret;
+        std::memcpy(&ret, buffer, 8);
+        return ret;
+    }
     duint8 buffer[8] = {0};
     if (bitPos == 0)
         filestr->read (buffer,8);
@@ -433,6 +571,13 @@ DRW_Coord dwgBuffer::get2RawDouble(){
 
 /**Reads raw int 32 bits little-endian order, returns a unsigned int (RL) **/
 duint32 dwgBuffer::getRawLong32(){
+    if (directBuf && bitPos == 0) {
+        if (directPos + 4 > maxSize) { directGood = false; return 0; }
+        duint32 ret;
+        std::memcpy(&ret, directBuf + directPos, 4);
+        directPos += 4;
+        return ret;
+    }
     duint16 tmp1 = getRawShort16();
     duint16 tmp2 = getRawShort16();
     duint32 ret = (tmp2 << 16) | (tmp1 & 0x0000FFFF);
@@ -451,79 +596,50 @@ duint64 dwgBuffer::getRawLong64(){
 
 /**Reads modular unsigner int, char based, compressed form, little-endian order, returns a unsigned int (U-MC) **/
 duint32 dwgBuffer::getUModularChar(){
-    std::vector<duint8> buffer;
-    duint32 result =0;
-    for (int i=0; i<4;i++){
-        duint8 b= getRawChar8();
-        buffer.push_back(b & 0x7F);
-        if (! (b & 0x80))
+    duint32 result = 0;
+    int offset = 0;
+    for (int i = 0; i < 4; i++){
+        duint8 b = getRawChar8();
+        result += static_cast<duint32>(b & 0x7F) << offset;
+        offset += 7;
+        if (!(b & 0x80))
             break;
     }
-    int offset = 0;
-    for (unsigned int i=0; i<buffer.size();i++){
-        result += buffer[i] << offset;
-        offset +=7;
-    }
-//RLZ: WARNING!!! needed to verify on read handles
-    //result = result & 0x7F;
     return result;
 }
 
 /**Reads modular int, char based, compressed form, little-endian order, returns a signed int (MC) **/
 dint32 dwgBuffer::getModularChar(){
-    bool negative = false;
-    std::vector<dint8> buffer;
-    dint32 result =0;
-    for (int i=0; i<4;i++){
-        duint8 b= getRawChar8();
-        buffer.push_back(b & 0x7F);
-        if (! (b & 0x80))
+    dint32 result = 0;
+    int offset = 0;
+    duint8 lastByte = 0;
+    for (int i = 0; i < 4; i++){
+        duint8 b = getRawChar8();
+        lastByte = b;
+        result += static_cast<dint32>(b & 0x7F) << offset;
+        offset += 7;
+        if (!(b & 0x80))
             break;
     }
-    dint8 b= buffer.back();
-    if (b & 0x40) {
-        negative = true;
-        buffer.pop_back();
-        buffer.push_back(b & 0x3F);
-    }
-
-    int offset = 0;
-    for (unsigned int i=0; i<buffer.size();i++){
-        result += buffer[i] << offset;
-        offset +=7;
-    }
-    if (negative)
+    if (lastByte & 0x40) {
+        // Sign bit set — clear it from result and negate
+        result -= static_cast<dint32>(0x40) << (offset - 7);
         result = -result;
+    }
     return result;
 }
 
 /**Reads modular int, short based, compressed form, little-endian order, returns a unsigned int (MC) **/
 dint32 dwgBuffer::getModularShort(){
-//    bool negative = false;
-    std::vector<dint16> buffer;
-    dint32 result =0;
-    for (int i=0; i<2;i++){
-        duint16 b= getRawShort16();
-        buffer.push_back(b & 0x7FFF);
-        if (! (b & 0x8000))
+    dint32 result = 0;
+    int offset = 0;
+    for (int i = 0; i < 2; i++){
+        duint16 b = getRawShort16();
+        result += static_cast<dint32>(b & 0x7FFF) << offset;
+        offset += 15;
+        if (!(b & 0x8000))
             break;
     }
-
-    //only positive ?
-/*    dint8 b= buffer.back();
-    if (! (b & 0x40)) {
-        negative = true;
-        buffer.pop_back();
-        buffer.push_back(b & 0x3F);
-    }*/
-
-    int offset = 0;
-    for (unsigned int i=0; i<buffer.size();i++){
-        result += buffer[i] << offset;
-        offset +=15;
-    }
-/*    if (negative)
-        result = -result;*/
     return result;
 }
 
@@ -533,8 +649,18 @@ dwgHandle dwgBuffer::getHandle(){ //H
     hl.code = (data >> 4) & 0x0F;
     hl.size = data & 0x0F;
     hl.ref=0;
-    for (int i=0; i< hl.size;i++){
-        hl.ref = (hl.ref << 8) | getRawChar8();
+    if (directBuf && bitPos == 0 && hl.size > 0) {
+        // Fast path: batch read handle bytes from direct buffer
+        if (directPos + hl.size <= maxSize) {
+            for (int i = 0; i < hl.size; i++)
+                hl.ref = (hl.ref << 8) | directBuf[directPos++];
+        } else {
+            directGood = false;
+        }
+    } else {
+        for (int i=0; i< hl.size;i++){
+            hl.ref = (hl.ref << 8) | getRawChar8();
+        }
     }
     return hl;
 }
@@ -561,10 +687,13 @@ std::string dwgBuffer::get8bitStr(){
     duint16 textSize = getBitShort();
     if (textSize == 0)
         return std::string();
-    duint8 *tmpBuffer = new duint8[textSize];
+    duint8 stackBuf[256];
+    duint8 *tmpBuffer = (textSize <= 256) ? stackBuf : new duint8[textSize];
     bool good = getBytes(tmpBuffer, textSize);
-    if (!good)
+    if (!good) {
+        if (tmpBuffer != stackBuf) delete[] tmpBuffer;
         return std::string();
+    }
 
 /*    filestr->read (buffer,textSize);
     if (!filestr->good())
@@ -579,7 +708,7 @@ std::string dwgBuffer::get8bitStr(){
         }
     }*/
     std::string str(reinterpret_cast<char*>(tmpBuffer), textSize);
-    delete[]tmpBuffer;
+    if (tmpBuffer != stackBuf) delete[] tmpBuffer;
     // R13/R14 TV strings include the null terminator in the length field;
     // strip it so comparisons like recName == "LWPOLYLINE" work correctly.
     while (!str.empty() && str.back() == '\0')
@@ -596,16 +725,19 @@ std::string dwgBuffer::get16bitStr(duint32 textSize, bool nullTerm){
     duint32 ts = textSize;
     if (nullTerm)
         ts += 2;
-    duint8 *tmpBuffer = new duint8[textSize + 2];
+    duint8 stackBuf[512];
+    duint8 *tmpBuffer = (textSize + 2 <= 512) ? stackBuf : new duint8[textSize + 2];
     bool good = getBytes(tmpBuffer, ts);
-    if (!good)
+    if (!good) {
+        if (tmpBuffer != stackBuf) delete[] tmpBuffer;
         return std::string();
+    }
     if (!nullTerm) {
         tmpBuffer[textSize] = '\0';
         tmpBuffer[textSize + 1] = '\0';
     }
     std::string str(reinterpret_cast<char*>(tmpBuffer), ts);
-    delete[]tmpBuffer;
+    if (tmpBuffer != stackBuf) delete[] tmpBuffer;
 
     return str;
 }
@@ -697,34 +829,58 @@ double dwgBuffer::getDefaultDouble(double d){
         return d;
     else if (b == 1){
         duint8 buffer[4];
-        char *tmp=nullptr;
-        if (bitPos != 0) {
+        if (directBuf) {
+            if (directPos + 4 > maxSize) { directGood = false; return 0.0; }
+            if (bitPos == 0) {
+                std::memcpy(buffer, directBuf + directPos, 4);
+                directPos += 4;
+            } else {
+                const duint8 bp = bitPos;
+                const duint8 rbp = 8 - bp;
+                for (int i = 0; i < 4; i++) {
+                    duint8 nb = directBuf[directPos++];
+                    buffer[i] = static_cast<duint8>((currByte << bp) | (nb >> rbp));
+                    currByte = nb;
+                }
+            }
+        } else if (bitPos != 0) {
             for (int i = 0; i < 4; i++)
                 buffer[i] = getRawChar8();
         } else {
-        filestr->read (buffer,4);
+            filestr->read(buffer, 4);
         }
-        tmp = reinterpret_cast<char*>(&d);
+        char *tmp = reinterpret_cast<char*>(&d);
         for (int i = 0; i < 4; i++)
             tmp[i] = buffer[i];
-        double ret = *reinterpret_cast<double*>( tmp );
-        return ret;
+        return d;
     } else if (b == 2){
         duint8 buffer[6];
-        char *tmp=nullptr;
-        if (bitPos != 0) {
+        if (directBuf) {
+            if (directPos + 6 > maxSize) { directGood = false; return 0.0; }
+            if (bitPos == 0) {
+                std::memcpy(buffer, directBuf + directPos, 6);
+                directPos += 6;
+            } else {
+                const duint8 bp = bitPos;
+                const duint8 rbp = 8 - bp;
+                for (int i = 0; i < 6; i++) {
+                    duint8 nb = directBuf[directPos++];
+                    buffer[i] = static_cast<duint8>((currByte << bp) | (nb >> rbp));
+                    currByte = nb;
+                }
+            }
+        } else if (bitPos != 0) {
             for (int i = 0; i < 6; i++)
                 buffer[i] = getRawChar8();
         } else {
-        filestr->read (buffer,6);
+            filestr->read(buffer, 6);
         }
-        tmp = reinterpret_cast<char*>(&d);
+        char *tmp = reinterpret_cast<char*>(&d);
         for (int i = 2; i < 6; i++)
             tmp[i-2] = buffer[i];
         tmp[4] = buffer[0];
         tmp[5] = buffer[1];
-        double ret = *reinterpret_cast<double*>( tmp );
-        return ret;
+        return d;
     }
     //    if (b == 3) return a full raw double
     return getRawDouble();
@@ -879,6 +1035,22 @@ duint16 dwgBuffer::getBERawShort16(){
 
 /* reads "size" bytes and stores in "buf" return false if fail */
 bool dwgBuffer::getBytes(unsigned char *buf, duint64 size){
+    if (directBuf) {
+        if (directPos + size > maxSize) { directGood = false; return false; }
+        if (bitPos == 0) {
+            std::memcpy(buf, directBuf + directPos, static_cast<size_t>(size));
+            directPos += size;
+        } else {
+            std::memcpy(buf, directBuf + directPos, static_cast<size_t>(size));
+            directPos += size;
+            for (duint64 i = 0; i < size; i++){
+                duint8 tmp = buf[i];
+                buf[i] = (currByte << bitPos) | (tmp >> (8 - bitPos));
+                currByte = tmp;
+            }
+        }
+        return true;
+    }
     duint8 tmp;
     filestr->read (buf,size);
     if (!filestr->good())
@@ -895,9 +1067,21 @@ bool dwgBuffer::getBytes(unsigned char *buf, duint64 size){
 }
 
 duint16 dwgBuffer::crc8(duint16 dx,dint64 start,dint64 end){
+    dint64 n = end-start;
+    if (directBuf) {
+        if (static_cast<duint64>(start + n) > maxSize) return 0;
+        duint8 *p = directBuf + start;
+        duint8 al;
+        while (n-- > 0) {
+            al = (duint8)((*p) ^ ((dint8)(dx & 0xFF)));
+            dx = (dx>>8) & 0xFF;
+            dx = dx ^ crctable[al & 0xFF];
+            p++;
+        }
+        return dx;
+    }
     duint64 pos = filestr->getPos();
     filestr->setPos(start);
-    dint64 n = end-start;
     duint8 *tmpBuf = new duint8[static_cast<size_t>(n)];
     duint8 *p = tmpBuf;
     filestr->read (tmpBuf,n);
@@ -918,9 +1102,18 @@ duint16 dwgBuffer::crc8(duint16 dx,dint64 start,dint64 end){
 }
 
 duint32 dwgBuffer::crc32(duint32 seed,dint32 start,dint32 end){
+    int n = end-start;
+    if (directBuf) {
+        if (static_cast<duint64>(start + n) > maxSize) return 0;
+        duint8 *p = directBuf + start;
+        duint32 invertedCrc = ~seed;
+        while (n-- > 0) {
+            invertedCrc = crc32Table[(invertedCrc ^ *p++) & 0xFF] ^ (invertedCrc >> 8);
+        }
+        return ~invertedCrc;
+    }
     duint64 pos = filestr->getPos();
     filestr->setPos(start);
-    int n = end-start;
     duint8 *tmpBuf = new duint8[n];
     duint8 *p = tmpBuf;
     filestr->read (tmpBuf,n);

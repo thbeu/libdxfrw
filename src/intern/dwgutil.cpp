@@ -12,6 +12,7 @@
 ******************************************************************************/
 
 #include <sstream>
+#include <cstring>
 #include "drw_dbg.h"
 #include "dwgutil.h"
 #include "rscodec.h"
@@ -278,9 +279,17 @@ bool dwgCompressor::decompress18(duint8 *cbuf, duint8 *dbuf, duint64 csize, duin
             // only copy what we can fit
             compBytes = decompSize - decompPos;
         }
-        duint64 j {decompPos - compOffset - 1};
-        for (duint64 i = 0; i < compBytes && buffersGood(); i++) {
-            decompSet( decompByte( j++));
+        {
+            duint64 j = decompPos - compOffset - 1;
+            // Use memcpy when source and destination don't overlap
+            if (j + compBytes <= decompPos) {
+                std::memcpy(decompBuffer + decompPos, decompBuffer + j, static_cast<size_t>(compBytes));
+                decompPos += compBytes;
+            } else {
+                for (duint64 i = 0; i < compBytes; i++) {
+                    decompBuffer[decompPos++] = decompBuffer[j++];
+                }
+            }
         }
 
         //copy "uncompressed data", if size allows
@@ -290,8 +299,14 @@ bool dwgCompressor::decompress18(duint8 *cbuf, duint8 *dbuf, duint64 csize, duin
             // only copy what we can fit
             litCount = decompSize - decompPos;
         }
-        for (duint64 i=0; i < litCount && buffersGood(); i++) {
-            decompSet( compressedByte());
+        if (compressedPos + litCount <= compressedSize) {
+            std::memcpy(decompBuffer + decompPos, compressedBuffer + compressedPos, static_cast<size_t>(litCount));
+            decompPos += litCount;
+            compressedPos += litCount;
+        } else {
+            for (duint64 i=0; i < litCount && buffersGood(); i++) {
+                decompSet( compressedByte());
+            }
         }
     }
 
@@ -441,8 +456,20 @@ bool dwgCompressor::decompress21(duint8 *cbuf, duint8 *dbuf, duint64 csize, duin
                 compressedGood = false;
             }
             sourceOffset = static_cast<duint32>(decompPos) - sourceOffset;
-            for (duint32 i=0; i< length; i++)
-                decompSet( decompByte( sourceOffset + i));
+            // Back-reference copy - source may overlap destination
+            if (sourceOffset + length <= decompPos || sourceOffset >= decompPos) {
+                // No overlap with future writes - safe to use memcpy/memmove
+                if (decompPos + length <= decompSize) {
+                    std::memmove(decompBuffer + decompPos, decompBuffer + sourceOffset, length);
+                    decompPos += length;
+                } else {
+                    for (duint32 i=0; i< length; i++)
+                        decompSet( decompByte( sourceOffset + i));
+                }
+            } else {
+                for (duint32 i=0; i< length; i++)
+                    decompSet( decompByte( sourceOffset + i));
+            }
 
             length = opCode & 7;
             if ((length != 0) || (compressedPos >= compressedSize)) {

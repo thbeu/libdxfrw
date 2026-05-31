@@ -231,6 +231,8 @@ public:
     /// Section-level (structural) failures still propagate via the
     /// bool return from each section method.
     size_t m_entityParseFailures = 0;
+    /// Reusable buffer for readDwgEntity to avoid repeated allocations.
+    std::vector<duint8> m_entityBuf;
     /// Custom-class entities (oType >= 500, recName not in our hardcoded
     /// dwgType map) that fell through readDwgEntity's default branch and
     /// got stuffed into objObjectMap.  Keyed by the DXF recName (eg
@@ -272,6 +274,13 @@ protected:
 //    duint32 blockCtrl;
     duint32 nextEntLink{0};
     duint32 prevEntLink{0};
+
+    // parseAttribs cache: avoid repeated map lookups + string copies
+    // for consecutive entities on the same layer/linetype.
+    duint32 m_cachedLyRef{0xFFFFFFFF};
+    std::string m_cachedLyName;
+    duint32 m_cachedLtRef{0xFFFFFFFF};
+    std::string m_cachedLtName;
 
 private:
     template <class T>
