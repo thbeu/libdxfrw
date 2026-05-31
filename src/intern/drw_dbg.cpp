@@ -15,6 +15,7 @@
 #include "drw_dbg.h"
 
 DRW_dbg *DRW_dbg::instance{nullptr};
+bool DRW_dbg::enabled{false};
 
 /*********private clases*************/
 
@@ -55,6 +56,7 @@ void DRW_dbg::setCustomDebugPrinter(std::unique_ptr<DRW::DebugPrinter> printer)
 
 void DRW_dbg::setLevel(Level lvl){
     level = lvl;
+    enabled = (level == Level::Debug);
     switch (level){
     case Level::Debug:
         currentPrinter = debugPrinter.get();
@@ -70,22 +72,27 @@ DRW_dbg::Level DRW_dbg::getLevel(){
 }
 
 void DRW_dbg::print(const std::string &s){
+    if (!enabled) return;
     currentPrinter->printS(s);
 }
 
 void DRW_dbg::print(signed char i){
+    if (!enabled) return;
     currentPrinter->printI(i);
 }
 
 void DRW_dbg::print(unsigned char i){
+    if (!enabled) return;
     currentPrinter->printUI(i);
 }
 
 void DRW_dbg::print(int i){
+    if (!enabled) return;
     currentPrinter->printI(i);
 }
 
 void DRW_dbg::print(unsigned int i){
+    if (!enabled) return;
     currentPrinter->printUI(i);
 }
 
@@ -94,33 +101,41 @@ void DRW_dbg::print(long int i){
 }
 
 void DRW_dbg::print(long long int i){
+    if (!enabled) return;
     currentPrinter->printI(i);
 }
 
 void DRW_dbg::print(long unsigned int i){
+    if (!enabled) return;
     currentPrinter->printUI(i);
 }
 
 void DRW_dbg::print(long long unsigned int i){
+    if (!enabled) return;
     currentPrinter->printUI(i);
 }
 
 void DRW_dbg::print(double d){
+    if (!enabled) return;
     currentPrinter->printD(d);
 }
 
 void DRW_dbg::printH(long long int i){
+    if (!enabled) return;
     currentPrinter->printH(i);
 }
 
 void DRW_dbg::printB(int i){
+    if (!enabled) return;
     currentPrinter->printB(i);
 }
 void DRW_dbg::printHL(int c, int s, int h){
+    if (!enabled) return;
     currentPrinter->printHL(c, s, h);
 }
 
 void DRW_dbg::printPT(double x, double y, double z){
+    if (!enabled) return;
     currentPrinter->printPT(x, y, z);
 }
 

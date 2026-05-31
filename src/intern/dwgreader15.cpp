@@ -103,7 +103,7 @@ bool dwgReader15::readFileHeader() {
         ckcrc = ckcrc ^ 0x8461;
     }
     DRW_DBG("\nfile header crc8 xor result= "); DRW_DBG(ckcrc);
-    DRW_DBG("\nfile header CRC= "); DRW_DBG(fileBuf->getRawShort16());
+    { std::uint16_t hcrc = fileBuf->getRawShort16(); DRW_DBG("\nfile header CRC= "); DRW_DBG(hcrc); }
     DRW_DBG("\nfile header sentinel= ");
     checkSentinel(fileBuf.get(), secEnum::FILEHEADER, false);
 
@@ -157,31 +157,7 @@ bool dwgReader15::readDwgClasses(){
         cl->parseDwg(version, &buff, &buff);
         classesmap[cl->classNum] = cl;
     }
-     // 1.5a: validate the R13/R15 CLASSES CRC (crc16 0xC0C1). The writer
-     // (dwgwriter15.cpp) covers [sectionStart+16, end) = the RL size field
-     // (4 bytes) + class data, matching libreDWG's [address+16, address+
-     // size-18]. Here that is [si.address+16, si.address+20+classDataSize].
-     // crc8 saves/restores fileBuf's position, so it is safe to call before
-     // reading the stored CRC. The 1.1 negative-range guard protects against
-     // a corrupt size. (crc8 returns 0 on a read failure; treat that as a
-     // mismatch only when the stored CRC is non-zero.)
-     std::uint16_t crcCalc = fileBuf->crc8(0xc0c1,
-                                     static_cast<std::int32_t>(si.address + 16),
-                                     static_cast<std::int32_t>(si.address + 20 + classDataSize));
-     std::uint16_t crcRead = fileBuf->getRawShort16();
-     bool crcOk = (crcCalc == crcRead);
-     if (!crcOk) {
-         // WARN-ONLY: a CLASSES CRC mismatch is non-fatal — failing it discarded
-         // the WHOLE drawing (processDwg short-circuits all later sections) for a
-         // single drifted byte from a deviating third-party writer, inconsistent
-         // with the warn-only BEGIN sentinel (:145). The class-number map still
-         // parsed; track the mismatch as a diagnostic instead. (crc8 returns 0 on
-         // a stream read failure; a spurious 0==0 match there is acceptable for a
-         // diagnostic-only counter.)
-         ++m_classesCrcMismatch;
-         DRW_DBG("\nWARNING dwgReader15::readDwgClasses CRC mismatch: calc=");
-         DRW_DBGH(crcCalc); DRW_DBG(" read="); DRW_DBGH(crcRead); DRW_DBG("\n");
-     }
+     { std::uint16_t crc = fileBuf->getRawShort16(); DRW_DBG("\nCRC: "); DRW_DBGH(crc); }
      DRW_DBG("\nclasses section end sentinel= ");
      // 1.4: honor the END sentinel (fail on mismatch). The BEGIN sentinel
      // (:145) and the CRC above stay warn-only to tolerate benign drift.
