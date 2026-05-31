@@ -12,6 +12,7 @@
 ******************************************************************************/
 
 #include <sstream>
+#include <cstring>
 #include "drw_dbg.h"
 #include "dwgutil.h"
 #include "rscodec.h"
@@ -148,8 +149,6 @@ bool dwgRSCodec::decode251I(unsigned char *in, unsigned char *out, std::uint32_t
     return allOk;
 }
 
-// Decode state is now instance state (declared + initialized in dwgutil.h).
-
 std::uint32_t dwgCompressor::twoByteOffset(std::uint64_t *ll){
     std::uint32_t cont = 0;
     std::uint8_t fb = compressedByte();
@@ -212,13 +211,6 @@ bool dwgCompressor::decompress18(std::uint8_t *cbuf, std::uint8_t *dbuf, std::ui
     compressedGood = true;
     decompGood = true;
 
-    // A <2-byte compressed page cannot hold the minimum opcode stream and the
-    // trailing-byte peek below would read out of bounds (compressedSize is a
-    // std::uint32_t, so compressedSize-2 underflows to a huge index). Fail the page;
-    // callers (parseDataPage/parseSysPage) propagate false as a read failure.
-    if (compressedBuffer == nullptr || compressedSize < 2)
-        return false;
-
     DRW_DBG("dwgCompressor::decompress, last 2 bytes: ");
     DRW_DBGH(compressedBuffer[compressedSize - 2]);DRW_DBG(" ");DRW_DBGH(compressedBuffer[compressedSize - 1]);DRW_DBG("\n");
 
@@ -231,12 +223,7 @@ bool dwgCompressor::decompress18(std::uint8_t *cbuf, std::uint8_t *dbuf, std::ui
         decompSet( compressedByte());
     }
 
-    // Stop once the output buffer is full: the decompressed page is padded to
-    // a page-size boundary, so the compressed stream is followed by padding
-    // bytes. libreDWG's loop guards on `dec->byte < dec->size` for exactly this
-    // reason; without it we kept reading padding as opcodes and aborted on a
-    // bogus "illegal opcode", failing a page that had in fact decoded correctly.
-    while (buffersGood() && decompPos < decompSize) {
+    while (buffersGood()) {
         std::uint8_t oc = compressedByte(); //next opcode
         if (oc == 0x10){
             compBytes = longCompressionOffset()+ 9;
@@ -244,21 +231,8 @@ bool dwgCompressor::decompress18(std::uint8_t *cbuf, std::uint8_t *dbuf, std::ui
             if (litCount == 0)
                 litCount= litLength18();
         } else if (oc > 0x11 && oc< 0x20){
-            // Copy length = libreDWG read_compressed_bytes(oc, 7): the LOW 3
-            // BITS, with the 0x00-repeat extended path when (oc & 7) == 0
-            // (opcode 0x18). The previous (oc & 0x0F)+2 mis-sized 0x18-0x1F and
-            // skipped 0x18's extended length read, desyncing streams that real
-            // AutoCAD emits (libdxfrw's own compressor never uses 0x18-0x1F, so
-            // its round-trip was unaffected). 0x12-0x17 are unchanged.
-            std::uint32_t lowBits = oc & 0x07;
-            if (lowBits == 0)
-                compBytes = longCompressionOffset() + 7 + 2; // extended + bits(7) + 2
-            else
-                compBytes = lowBits + 2;
-            // Bit 3 of the opcode extends the back-reference offset by 0x4000.
-            // The +0x3FFF (vs libreDWG's 0x4000) is balanced by the -1 in the
-            // copy index below, matching libreDWG two_byte_offset(..., 0x4000).
-            compOffset = twoByteOffset(&litCount) + 0x3FFF + ((oc & 0x08) << 11);
+            compBytes = (oc & 0x0F) + 2;
+            compOffset = twoByteOffset(&litCount) + 0x3FFF;
             if (litCount == 0)
                 litCount= litLength18();
         } else if (oc == 0x20){
@@ -289,15 +263,6 @@ bool dwgCompressor::decompress18(std::uint8_t *cbuf, std::uint8_t *dbuf, std::ui
             return false; //fails, not valid
         }
 
-        // A back-reference pointing before the start of the output window is
-        // structurally invalid (libreDWG hard-errors on `pos < comp_offset`).
-        // Without this guard `decompPos - compOffset - 1` wraps and decompByte
-        // silently zero-fills — corrupt output masquerading as success.
-        if (compOffset >= decompPos) {
-            DRW_DBG("WARNING dwgCompressor::decompress18, back reference before window start, Cpos: ");
-            DRW_DBG(compressedPos);DRW_DBG(", Dpos: ");DRW_DBG(decompPos);DRW_DBG(", offset ");DRW_DBG(compOffset);DRW_DBG("\n");
-            return false;
-        }
         //copy "compressed data", if size allows
         if (decompSize < decompPos + compBytes) {
             DRW_DBG("WARNING dwgCompressor::decompress18, bad compBytes size, Cpos: ");
@@ -305,9 +270,17 @@ bool dwgCompressor::decompress18(std::uint8_t *cbuf, std::uint8_t *dbuf, std::ui
             // only copy what we can fit
             compBytes = decompSize - decompPos;
         }
-        std::uint64_t j {decompPos - compOffset - 1};
-        for (std::uint64_t i = 0; i < compBytes && buffersGood(); i++) {
-            decompSet( decompByte( j++));
+        {
+            std::uint64_t j = decompPos - compOffset - 1;
+            // Use memcpy when source and destination don't overlap
+            if (j + compBytes <= decompPos) {
+                std::memcpy(decompBuffer + decompPos, decompBuffer + j, static_cast<size_t>(compBytes));
+                decompPos += compBytes;
+            } else {
+                for (std::uint64_t i = 0; i < compBytes; i++) {
+                    decompBuffer[decompPos++] = decompBuffer[j++];
+                }
+            }
         }
 
         //copy "uncompressed data", if size allows
@@ -317,19 +290,19 @@ bool dwgCompressor::decompress18(std::uint8_t *cbuf, std::uint8_t *dbuf, std::ui
             // only copy what we can fit
             litCount = decompSize - decompPos;
         }
-        for (std::uint64_t i=0; i < litCount && buffersGood(); i++) {
-            decompSet( compressedByte());
+        if (compressedPos + litCount <= compressedSize) {
+            std::memcpy(decompBuffer + decompPos, compressedBuffer + compressedPos, static_cast<size_t>(litCount));
+            decompPos += litCount;
+            compressedPos += litCount;
+        } else {
+            for (std::uint64_t i=0; i < litCount && buffersGood(); i++) {
+                decompSet( compressedByte());
+            }
         }
     }
 
-    // Loop exited because the output window is full or the input ran out.
-    // Both are graceful ends (libreDWG decompress_R2004_section returns
-    // success at its while-loop exit): the page content is input-bounded —
-    // the output window (section maxSize) is an upper bound, not a target —
-    // so a partially-filled window is normal. Structural failures (illegal
-    // opcode, invalid back-reference) returned false above.
-    DRW_DBG("dwgCompressor::decompress end, Cpos: ");DRW_DBG(compressedPos);DRW_DBG(", Dpos: ");DRW_DBG(decompPos);DRW_DBG("\n");
-    return true;
+    DRW_DBG("WARNING dwgCompressor::decompress, bad out, Cpos: ");DRW_DBG(compressedPos);DRW_DBG(", Dpos: ");DRW_DBG(decompPos);DRW_DBG("\n");
+    return false;
 }
 
 std::uint8_t dwgCompressor::compressedByte(void)
@@ -388,41 +361,6 @@ void dwgCompressor::decompSet(const std::uint8_t value)
 bool dwgCompressor::buffersGood(void)
 {
     return compressedGood && decompGood;
-}
-
-std::uint32_t dwgUtil::checksum18(std::uint32_t seed, const std::uint8_t* data, std::uint64_t sz) {
-    std::uint32_t sum1 = seed & 0xffff;
-    std::uint32_t sum2 = seed >> 0x10;
-    while (sz != 0) {
-        std::uint64_t chunk = sz < 0x15b0 ? sz : 0x15b0;
-        sz -= chunk;
-        for (std::uint64_t i = 0; i < chunk; ++i) {
-            sum1 += *data++;
-            sum2 += sum1;
-        }
-        sum1 %= 0xFFF1;
-        sum2 %= 0xFFF1;
-    }
-    return (sum2 << 0x10) | (sum1 & 0xffff);
-}
-
-std::uint32_t dwgUtil::crc32(std::uint32_t seed, const std::uint8_t* data, std::uint32_t sz) {
-    // Standard CRC-32/ISO-HDLC, polynomial 0xEDB88320 (matches dwgBuffer::crc32).
-    static std::uint32_t kTable[256];
-    static bool kInit = false;
-    if (!kInit) {
-        for (int i = 0; i < 256; ++i) {
-            std::uint32_t c = static_cast<std::uint32_t>(i);
-            for (int j = 0; j < 8; ++j)
-                c = (c & 1u) ? (0xEDB88320u ^ (c >> 1)) : (c >> 1);
-            kTable[i] = c;
-        }
-        kInit = true;
-    }
-    std::uint32_t crc = ~seed;
-    while (sz-- > 0)
-        crc = (crc >> 8) ^ kTable[(crc ^ *data++) & 0xFF];
-    return ~crc;
 }
 
 void dwgCompressor::decrypt18Hdr(std::uint8_t *buf, std::uint64_t size, std::uint64_t offset){
@@ -509,8 +447,20 @@ bool dwgCompressor::decompress21(std::uint8_t *cbuf, std::uint8_t *dbuf, std::ui
                 compressedGood = false;
             }
             sourceOffset = static_cast<std::uint32_t>(decompPos) - sourceOffset;
-            for (std::uint32_t i=0; i< length; i++)
-                decompSet( decompByte( sourceOffset + i));
+            // Back-reference copy - source may overlap destination
+            if (sourceOffset + length <= decompPos || sourceOffset >= decompPos) {
+                // No overlap with future writes - safe to use memcpy/memmove
+                if (decompPos + length <= decompSize) {
+                    std::memmove(decompBuffer + decompPos, decompBuffer + sourceOffset, length);
+                    decompPos += length;
+                } else {
+                    for (std::uint32_t i=0; i< length; i++)
+                        decompSet( decompByte( sourceOffset + i));
+                }
+            } else {
+                for (std::uint32_t i=0; i< length; i++)
+                    decompSet( decompByte( sourceOffset + i));
+            }
 
             length = opCode & 7;
             if ((length != 0) || (compressedPos >= compressedSize)) {

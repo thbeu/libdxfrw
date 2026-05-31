@@ -16,6 +16,7 @@
 #include <fstream>
 #include <sstream>
 #include <memory>
+#include <cstring>
 #include "../drw_base.h"
 
 class DRW_Coord;
@@ -32,6 +33,8 @@ public:
     virtual bool setPos(std::uint64_t p) = 0;
     virtual bool good() const = 0;
     virtual dwgBasicStream* clone() const = 0;
+    // Direct buffer access for fast-path reads (returns null if not memory-backed)
+    virtual std::uint8_t* getBuffer() const { return nullptr; }
 };
 
 class dwgFileStream: public dwgBasicStream{
@@ -40,18 +43,26 @@ public:
         :stream{s}
     {
         stream->seekg (0, std::ios::end);
-        sz = stream->tellg();
+        sz = static_cast<std::uint64_t>(stream->tellg());
         stream->seekg(0, std::ios_base::beg);
+        // Pre-read entire file into memory for faster random access
+        buf.reset(new std::uint8_t[static_cast<size_t>(sz)]);
+        stream->read(reinterpret_cast<char*>(buf.get()), static_cast<std::streamsize>(sz));
+        isOk = stream->good();
     }
     bool read(std::uint8_t* s, std::uint64_t n) override;
     std::uint64_t size() const override{return sz;}
-    std::uint64_t getPos() const override{return stream->tellg();}
+    std::uint64_t getPos() const override{return pos;}
     bool setPos(std::uint64_t p) override;
-    bool good() const override{return stream->good();}
+    bool good() const override{return isOk;}
     dwgBasicStream* clone() const override{return new dwgFileStream(stream);}
+    std::uint8_t* getBuffer() const override{return buf.get();}
 private:
     std::ifstream *stream{nullptr};
+    std::unique_ptr<std::uint8_t[]> buf;
     std::uint64_t sz{0};
+    std::uint64_t pos{0};
+    bool isOk{true};
 };
 
 class dwgCharStream: public dwgBasicStream{
@@ -60,12 +71,28 @@ public:
         :stream{buf}
         ,sz{s}
     {}
-    bool read(std::uint8_t* s, std::uint64_t n) override;
+    bool read(std::uint8_t* s, std::uint64_t n) override {
+        if ( n > (sz - pos) ) {
+            isOk = false;
+            return false;
+        }
+        std::memcpy(s, stream + pos, static_cast<size_t>(n));
+        pos += n;
+        return true;
+    }
     std::uint64_t size() const override {return sz;}
     std::uint64_t getPos() const override {return pos;}
-    bool setPos(std::uint64_t p) override;
+    bool setPos(std::uint64_t p) override {
+        if (p > sz) {
+            isOk = false;
+            return false;
+        }
+        pos = p;
+        return true;
+    }
     bool good() const override {return isOk;}
     dwgBasicStream* clone() const override {return new dwgCharStream(stream, sz);}
+    std::uint8_t* getBuffer() const override{return nullptr;}
 private:
     std::uint8_t *stream{nullptr};
     std::uint64_t sz{0};
@@ -75,12 +102,17 @@ private:
 
 class dwgBuffer {
 public:
+    struct DirectTag {};
     dwgBuffer(std::ifstream *stream, DRW_TextCodec *decoder = nullptr);
     dwgBuffer(std::uint8_t *buf, std::uint64_t size, DRW_TextCodec *decoder= nullptr);
+    dwgBuffer(DirectTag, std::uint8_t *buf, std::uint64_t size, DRW_TextCodec *decoder)
+        :decoder{decoder}, maxSize{size}, directBuf{nullptr}, directGood{true} {}
     dwgBuffer( const dwgBuffer& org );
+    dwgBuffer( dwgBuffer&& org ) = default;
     dwgBuffer& operator=( const dwgBuffer& org );
+    dwgBuffer& operator=( dwgBuffer&& org ) = default;
     virtual ~dwgBuffer() = default;
-    std::uint64_t size() const {return filestr->size();}
+    std::uint64_t size() const {return directBuf ? maxSize : filestr->size();}
     bool setPosition(std::uint64_t pos);
     std::uint64_t getPosition() const;
     void resetPosition(){setPosition(0); setBitPos(0);}
@@ -151,9 +183,15 @@ public:
 
     std::uint16_t getBERawShort16();  //RS big-endian order
 
-    bool isGood() const {return filestr->good();}
+    bool isGood() const {return directBuf ? (directGood && directPos <= maxSize) : filestr->good();}
     bool getBytes(std::uint8_t *buf, std::uint64_t size);
-    std::int64_t numRemainingBytes() const {return (maxSize- filestr->getPos());}
+    std::int64_t numRemainingBytes() const {return directBuf ? (maxSize - directPos) : (maxSize- filestr->getPos());}
+    void enableDirectBuf(std::uint8_t * /*buf*/) { /* DISABLED for testing */ }
+    std::uint8_t* getDirectPtr() const { return directBuf ? directBuf + directPos : nullptr; }
+    void reinitDirect(std::uint8_t * /*buf*/, std::uint64_t size, DRW_TextCodec *dc) {
+        /* directBuf DISABLED for testing */
+        maxSize = size; decoder = dc; bitPos = 0; currByte = 0;
+    }
 
     std::uint16_t crc8(std::uint16_t dx,std::int64_t start,std::int64_t end);
     std::uint32_t crc32(std::uint32_t seed,std::int32_t start,std::int32_t end);
@@ -192,6 +230,10 @@ private:
     std::uint64_t maxSize{0};
     std::uint8_t currByte{0};
     std::uint8_t bitPos{0};
+    // Fast-path: direct buffer access (avoids virtual dispatch)
+    std::uint8_t* directBuf{nullptr};
+    std::uint64_t directPos{0};
+    bool directGood{true};
     bool variableTextByteLength{false};
 
     UTF8STRING get8bitStr();

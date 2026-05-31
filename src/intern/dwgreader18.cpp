@@ -340,8 +340,8 @@ bool dwgReader18::readMetaData() {
     previewImagePos = fileBuf->getRawLong32(); //+ page header size (0x20).
     DRW_DBG("\npreviewImagePos (seekerImageData) = "); DRW_DBG(previewImagePos);
     { std::uint8_t adv = fileBuf->getRawChar8(); DRW_DBG("\napp Dwg version= "); DRW_DBGH(adv); DRW_DBG(", "); }
-    appMaintenanceVersion = fileBuf->getRawChar8();
-    { std::uint8_t amv = appMaintenanceVersion; DRW_DBG("\napp maintenance version= "); DRW_DBGH(amv); }
+    maintenanceVersion = fileBuf->getRawChar8();
+    { std::uint8_t amv = maintenanceVersion; DRW_DBG("\napp maintenance version= "); DRW_DBGH(amv); }
     std::uint16_t cp = fileBuf->getRawShort16();
     DRW_DBG("\ncodepage= "); DRW_DBG(cp);
     if (const char* cpName = dwgCodePageName(cp))
@@ -618,7 +618,7 @@ bool dwgReader18::readDwgClasses(){
 
     std::uint32_t size = dataBuf.getRawLong32();
     DRW_DBG("\ndata size in bytes "); DRW_DBG(size);
-    if ((DRW::AC1024 <= version && 3 < appMaintenanceVersion)
+    if ((DRW::AC1024 <= version && 3 < maintenanceVersion)
         || DRW::AC1032 <= version) { //2010+ MV>3
         std::uint32_t hSize = dataBuf.getRawLong32();
         DRW_DBG("\n2010+ & MV> 3, height 32b: "); DRW_DBG(hSize);
@@ -652,9 +652,9 @@ bool dwgReader18::readDwgClasses(){
         //byte offset to the bit-stream start: 16 (start sentinel) + 4 (size)
         //+ 4 (hSize, only when read) = 20 or 24 bytes. -1 bit for the endBit.
         //The hSize gating must match the size-read gate above (line ~598),
-        //otherwise AC1024 RTM files (appMaintenanceVersion <= 3) misalign by
+        //otherwise AC1024 RTM files (maintenanceVersion <= 3) misalign by
         //32 bits and fail BAD_READ_CLASSES.
-        bool hasHSize = ((DRW::AC1024 <= version && 3 < appMaintenanceVersion)
+        bool hasHSize = ((DRW::AC1024 <= version && 3 < maintenanceVersion)
                          || DRW::AC1032 <= version);
         std::uint32_t strStartPos = bitSize + (hasHSize ? 191 : 159);
         DRW_DBG("\nstrStartPos: "); DRW_DBG(strStartPos);
