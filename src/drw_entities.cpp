@@ -3417,6 +3417,49 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     case 470:
         gradName = reader->getUtf8String();
         break;
+    case 53: {
+        // Start of a new pattern definition line
+        DRW_Hatch::PatternLine pl;
+        pl.angle = reader->getDouble();
+        patternLines.push_back(pl);
+        break;
+    }
+    case 43:
+        if (!patternLines.empty())
+            patternLines.back().baseX = reader->getDouble();
+        else
+            return DRW_Point::parseCode(code, reader);
+        break;
+    case 44:
+        if (!patternLines.empty())
+            patternLines.back().baseY = reader->getDouble();
+        else
+            return DRW_Point::parseCode(code, reader);
+        break;
+    case 45:
+        if (!patternLines.empty())
+            patternLines.back().offsetX = reader->getDouble();
+        else
+            return DRW_Point::parseCode(code, reader);
+        break;
+    case 46:
+        if (!patternLines.empty())
+            patternLines.back().offsetY = reader->getDouble();
+        else
+            return DRW_Point::parseCode(code, reader);
+        break;
+    case 79:
+        if (!patternLines.empty())
+            patternLines.back().numDashes = reader->getInt32();
+        else
+            return DRW_Point::parseCode(code, reader);
+        break;
+    case 49:
+        if (!patternLines.empty())
+            patternLines.back().dashes.push_back(reader->getDouble());
+        else
+            return DRW_Point::parseCode(code, reader);
+        break;
     default:
         return DRW_Point::parseCode(code, reader);
     }

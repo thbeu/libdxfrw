@@ -1155,6 +1155,18 @@ public:
     double scale;              /*!< hatch pattern scale, code 41 */
     int deflines;              /*!< number of pattern definition lines, code 78 */
 
+    /* Pattern definition lines (code 78 = count, then per-line codes 53,43,44,45,46,79,49). */
+    struct PatternLine {
+        double angle {0.0};           /*!< line angle, code 53 */
+        double baseX {0.0};           /*!< base point X, code 43 */
+        double baseY {0.0};           /*!< base point Y, code 44 */
+        double offsetX {0.0};         /*!< offset X (delta), code 45 */
+        double offsetY {0.0};         /*!< offset Y (delta), code 46 */
+        int numDashes {0};            /*!< number of dash items, code 79 */
+        std::vector<double> dashes;   /*!< dash lengths, code 49 (+ = dash, - = gap, 0 = dot) */
+    };
+    std::vector<PatternLine> patternLines;
+
     std::vector<std::shared_ptr<DRW_HatchLoop>> looplist;  /*!< polyline list */
 
     /* Gradient (R2004+; DXF group codes 450..470, 421/63 per stop). */
