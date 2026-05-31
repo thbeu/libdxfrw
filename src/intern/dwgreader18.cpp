@@ -139,16 +139,23 @@ bool dwgReader18::parseDataPage(const dwgSectionInfo &si/*, duint8 *dData*/){
         DRW_DBG("\n    Data size= "); DRW_DBGH(pi.dataSize);
         DRW_DBG("\n    Start offset= "); DRW_DBGH(pi.startOffset); DRW_DBG("\n");
         dwgBuffer bufHdr(hdrData, 32, &decoder);
-        DRW_DBG("      section page type= "); DRW_DBGH(bufHdr.getRawLong32());
-        DRW_DBG("\n      section number= "); DRW_DBGH(bufHdr.getRawLong32());
+        { duint32 pageType = bufHdr.getRawLong32();
+          DRW_DBG("      section page type= "); DRW_DBGH(pageType); }
+        { duint32 secNum = bufHdr.getRawLong32();
+          DRW_DBG("\n      section number= "); DRW_DBGH(secNum); }
         pi.cSize = bufHdr.getRawLong32();
         DRW_DBG("\n      data size (compressed)= "); DRW_DBGH(pi.cSize); DRW_DBG(" dec "); DRW_DBG(pi.cSize);
         pi.uSize = bufHdr.getRawLong32();
         DRW_DBG("\n      page size (decompressed)= "); DRW_DBGH(pi.uSize); DRW_DBG(" dec "); DRW_DBG(pi.uSize);
-        DRW_DBG("\n      start offset (in decompressed buffer)= "); DRW_DBGH(bufHdr.getRawLong32());
-        DRW_DBG("\n      unknown= "); DRW_DBGH(bufHdr.getRawLong32());
-        DRW_DBG("\n      header checksum= "); DRW_DBGH(bufHdr.getRawLong32());
-        DRW_DBG("\n      data checksum= "); DRW_DBGH(bufHdr.getRawLong32()); DRW_DBG("\n");
+        { duint32 startOff = bufHdr.getRawLong32();
+          DRW_DBG("\n      start offset (in decompressed buffer)= "); DRW_DBGH(startOff); }
+        { duint32 unk = bufHdr.getRawLong32();
+          DRW_DBG("\n      unknown= "); DRW_DBGH(unk); }
+        { duint32 hdrCrc = bufHdr.getRawLong32();
+          DRW_DBG("\n      header checksum= "); DRW_DBGH(hdrCrc); }
+        { duint32 dataCrc = bufHdr.getRawLong32();
+          DRW_DBG("\n      data checksum= "); DRW_DBGH(dataCrc); }
+        DRW_DBG("\n");
 
         //get compressed data
         std::vector<duint8> cData(static_cast<size_t>(pi.cSize));
