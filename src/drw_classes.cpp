@@ -44,9 +44,12 @@ bool DRW_Class::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *strBuf
         DRW_DBG("\nInstance Count: "); DRW_DBG(instanceCount);
         duint32 dwgVersion = buf->getBitLong();
         DRW_DBG("\nDWG version: "); DRW_DBG(dwgVersion);
-        DRW_DBG("\nmaintenance version: "); DRW_DBG(buf->getBitLong());
-        DRW_DBG("\nunknown 1: "); DRW_DBG(buf->getBitLong());
-        DRW_DBG("\nunknown 2: "); DRW_DBG(buf->getBitLong());
+        dint32 maintVer = buf->getBitLong();
+        dint32 unk1 = buf->getBitLong();
+        dint32 unk2 = buf->getBitLong();
+        DRW_DBG("\nmaintenance version: "); DRW_DBG(maintVer);
+        DRW_DBG("\nunknown 1: "); DRW_DBG(unk1);
+        DRW_DBG("\nunknown 2: "); DRW_DBG(unk2);
     }
     DRW_DBG("\n");
     toDwgType();

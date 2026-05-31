@@ -1787,20 +1787,21 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
         duint64 requiredVersions = buf->getBitLongLong();
         DRW_DBG("\nREQUIREDVERSIONS var: "); DRW_DBG(requiredVersions);
     }
-    DRW_DBG("\nUnknown1: "); DRW_DBG(buf->getBitDouble());
-    DRW_DBG("\nUnknown2: "); DRW_DBG(buf->getBitDouble());
-    DRW_DBG("\nUnknown3: "); DRW_DBG(buf->getBitDouble());
-    DRW_DBG("\nUnknown4: "); DRW_DBG(buf->getBitDouble());
+    { double u1=buf->getBitDouble(); DRW_DBG("\nUnknown1: "); DRW_DBG(u1); }
+    { double u2=buf->getBitDouble(); DRW_DBG("\nUnknown2: "); DRW_DBG(u2); }
+    { double u3=buf->getBitDouble(); DRW_DBG("\nUnknown3: "); DRW_DBG(u3); }
+    { double u4=buf->getBitDouble(); DRW_DBG("\nUnknown4: "); DRW_DBG(u4); }
     if (version < DRW::AC1021) {//2007-
-        DRW_DBG("\nUnknown text1: "); DRW_DBG(buf->getCP8Text());
-        DRW_DBG("\nUnknown text2: "); DRW_DBG(buf->getCP8Text());
-        DRW_DBG("\nUnknown text3: "); DRW_DBG(buf->getCP8Text());
-        DRW_DBG("\nUnknown text4: "); DRW_DBG(buf->getCP8Text());
+        std::string t1=buf->getCP8Text(), t2=buf->getCP8Text(), t3=buf->getCP8Text(), t4=buf->getCP8Text();
+        DRW_DBG("\nUnknown text1: "); DRW_DBG(t1);
+        DRW_DBG("\nUnknown text2: "); DRW_DBG(t2);
+        DRW_DBG("\nUnknown text3: "); DRW_DBG(t3);
+        DRW_DBG("\nUnknown text4: "); DRW_DBG(t4);
     }
-    DRW_DBG("\nUnknown long1 (24L): "); DRW_DBG(buf->getBitLong());
-    DRW_DBG("\nUnknown long2 (0L): "); DRW_DBG(buf->getBitLong());
+    { dint32 l1=buf->getBitLong(); DRW_DBG("\nUnknown long1 (24L): "); DRW_DBG(l1); }
+    { dint32 l2=buf->getBitLong(); DRW_DBG("\nUnknown long2 (0L): "); DRW_DBG(l2); }
     if (version < DRW::AC1015) {//pre 2000
-        DRW_DBG("\nUnknown short (0): "); DRW_DBG(buf->getBitShort());
+        dint16 s=buf->getBitShort(); DRW_DBG("\nUnknown short (0): "); DRW_DBG(s);
     }
     if (version < DRW::AC1018) {//pre 2004
         dwgHandle hcv = hBbuf->getHandle();
@@ -1822,7 +1823,7 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
         vars["BLIPMODE"]=new DRW_Variant(70, buf->getBit());
     }
     if (version > DRW::AC1015) {//2004+
-         DRW_DBG("\nUndocumented: "); DRW_DBG(buf->getBit());
+         duint8 undoc = buf->getBit(); DRW_DBG("\nUndocumented: "); DRW_DBG(undoc);
     }
     vars["USRTIMER"]=new DRW_Variant(70, buf->getBit());
     vars["SKPOLY"]=new DRW_Variant(70, buf->getBit());
@@ -1866,9 +1867,10 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
         vars["PICKSTYLE"]=new DRW_Variant(70, buf->getBitShort());
     }
     if (version > DRW::AC1015) {//2004+
-         DRW_DBG("\nUnknown long 1: "); DRW_DBG(buf->getBitLong());
-         DRW_DBG("\nUnknown long 2: "); DRW_DBG(buf->getBitLong());
-         DRW_DBG("\nUnknown long 3: "); DRW_DBG(buf->getBitLong());
+         dint32 ul1=buf->getBitLong(), ul2=buf->getBitLong(), ul3=buf->getBitLong();
+         DRW_DBG("\nUnknown long 1: "); DRW_DBG(ul1);
+         DRW_DBG("\nUnknown long 2: "); DRW_DBG(ul2);
+         DRW_DBG("\nUnknown long 3: "); DRW_DBG(ul3);
     }
     vars["USERI1"]=new DRW_Variant(70, buf->getBitShort());
     vars["USERI2"]=new DRW_Variant(70, buf->getBitShort());
@@ -1929,9 +1931,10 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
 //    vars["TDUPDATE"]=new DRW_Variant(40, buf->getBitLong());//RLZ: TODO convert to day.msec
 //    vars["TDUPDATE"]=new DRW_Variant(40, buf->getBitLong());
     if (version > DRW::AC1015) {//2004+
-         DRW_DBG("\nUnknown long 4: "); DRW_DBG(buf->getBitLong());
-         DRW_DBG("\nUnknown long 5: "); DRW_DBG(buf->getBitLong());
-         DRW_DBG("\nUnknown long 6: "); DRW_DBG(buf->getBitLong());
+         dint32 ul4=buf->getBitLong(), ul5=buf->getBitLong(), ul6=buf->getBitLong();
+         DRW_DBG("\nUnknown long 4: "); DRW_DBG(ul4);
+         DRW_DBG("\nUnknown long 5: "); DRW_DBG(ul5);
+         DRW_DBG("\nUnknown long 6: "); DRW_DBG(ul6);
     }
     day = buf->getBitLong();
     msec = buf->getBitLong();
@@ -2231,7 +2234,7 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
         DRW_DBG("\nUNKNOWN HANDLE: "); DRW_DBGHL(CONTROL.code, CONTROL.size, CONTROL.ref);
     }
     if (version > DRW::AC1014) {//2000+
-        DRW_DBG("\nFlags: "); DRW_DBGH(buf->getBitLong());//RLZ TODO change to 8 vars
+        { dint32 flags = buf->getBitLong(); DRW_DBG("\nFlags: "); DRW_DBGH(flags); }//RLZ TODO change to 8 vars
         vars["INSUNITS"]=new DRW_Variant(70, buf->getBitShort());
         duint16 cepsntype = buf->getBitShort();
         vars["CEPSNTYPE"]=new DRW_Variant(70, cepsntype);
@@ -2271,9 +2274,11 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
     DRW_DBG("\nLTYPE CONTINUOUS: "); DRW_DBGHL(CONTROL.code, CONTROL.size, CONTROL.ref);
     if (version > DRW::AC1018) {//2007+
         vars["CAMERADISPLAY"]=new DRW_Variant(70, buf->getBit());
-        DRW_DBG("\nUnknown 2007+ long1: "); DRW_DBG(buf->getBitLong());
-        DRW_DBG("\nUnknown 2007+ long2: "); DRW_DBG(buf->getBitLong());
-        DRW_DBG("\nUnknown 2007+ double2: "); DRW_DBG(buf->getBitDouble());
+        dint32 ul1=buf->getBitLong(), ul2=buf->getBitLong();
+        double ud=buf->getBitDouble();
+        DRW_DBG("\nUnknown 2007+ long1: "); DRW_DBG(ul1);
+        DRW_DBG("\nUnknown 2007+ long2: "); DRW_DBG(ul2);
+        DRW_DBG("\nUnknown 2007+ double2: "); DRW_DBG(ud);
         vars["STEPSPERSEC"]=new DRW_Variant(40, buf->getBitDouble());
         vars["STEPSIZE"]=new DRW_Variant(40, buf->getBitDouble());
         vars["3DDWFPREC"]=new DRW_Variant(40, buf->getBitDouble());
@@ -2297,7 +2302,7 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
         vars["TILEMODELIGHTSYNCH"]=new DRW_Variant(70, buf->getRawChar8());
         vars["DWFFRAME"]=new DRW_Variant(70, buf->getRawChar8());
         vars["DGNFRAME"]=new DRW_Variant(70, buf->getRawChar8());
-        DRW_DBG("\nUnknown 2007+ BIT: "); DRW_DBG(buf->getBit());
+        { duint8 ub = buf->getBit(); DRW_DBG("\nUnknown 2007+ BIT: "); DRW_DBG(ub); }
         vars["INTERFERECOLOR"]=new DRW_Variant(70, buf->getCmColor(version));
         CONTROL = hBbuf->getHandle();
         DRW_DBG("\nINTERFEREOBJVS: "); DRW_DBGHL(CONTROL.code, CONTROL.size, CONTROL.ref);
@@ -2306,13 +2311,14 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
         CONTROL = hBbuf->getHandle();
         DRW_DBG("\nDRAGVS: "); DRW_DBGHL(CONTROL.code, CONTROL.size, CONTROL.ref);
         vars["CSHADOW"]=new DRW_Variant(70, buf->getRawChar8());
-        DRW_DBG("\nUnknown 2007+ double2: "); DRW_DBG(buf->getBitDouble());
+        { double ud = buf->getBitDouble(); DRW_DBG("\nUnknown 2007+ double2: "); DRW_DBG(ud); }
     }
     if (version > DRW::AC1012) {//R14+
-        DRW_DBG("\nUnknown R14+ short1: "); DRW_DBG(buf->getBitShort());
-        DRW_DBG("\nUnknown R14+ short2: "); DRW_DBG(buf->getBitShort());
-        DRW_DBG("\nUnknown R14+ short3: "); DRW_DBG(buf->getBitShort());
-        DRW_DBG("\nUnknown R14+ short4: "); DRW_DBG(buf->getBitShort());
+        dint16 us1=buf->getBitShort(), us2=buf->getBitShort(), us3=buf->getBitShort(), us4=buf->getBitShort();
+        DRW_DBG("\nUnknown R14+ short1: "); DRW_DBG(us1);
+        DRW_DBG("\nUnknown R14+ short2: "); DRW_DBG(us2);
+        DRW_DBG("\nUnknown R14+ short3: "); DRW_DBG(us3);
+        DRW_DBG("\nUnknown R14+ short4: "); DRW_DBG(us4);
     }
 
     DRW_DBG("\nbuf position: "); DRW_DBG(buf->getPosition());
@@ -2345,10 +2351,10 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
             DRW_DBG("\nstring buf position: "); DRW_DBG(buf->getPosition());
             DRW_DBG("\nstring buf bit position: "); DRW_DBG(buf->getBitPos());
         }
-        DRW_DBG("\nUnknown text1: "); DRW_DBG(buf->getUCSText(false));
-        DRW_DBG("\nUnknown text2: "); DRW_DBG(buf->getUCSText(false));
-        DRW_DBG("\nUnknown text3: "); DRW_DBG(buf->getUCSText(false));
-        DRW_DBG("\nUnknown text4: "); DRW_DBG(buf->getUCSText(false));
+        { std::string t1=buf->getUCSText(false); DRW_DBG("\nUnknown text1: "); DRW_DBG(t1); }
+        { std::string t2=buf->getUCSText(false); DRW_DBG("\nUnknown text2: "); DRW_DBG(t2); }
+        { std::string t3=buf->getUCSText(false); DRW_DBG("\nUnknown text3: "); DRW_DBG(t3); }
+        { std::string t4=buf->getUCSText(false); DRW_DBG("\nUnknown text4: "); DRW_DBG(t4); }
         vars["MENU"]=new DRW_Variant(1, buf->getUCSText(false));
         vars["DIMPOST"]=new DRW_Variant(1, buf->getUCSText(false));
         vars["DIMAPOST"]=new DRW_Variant(1, buf->getUCSText(false));
@@ -2401,11 +2407,11 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
         buf->getRawLong32();//advance 4 bytes (hisize)
     }
     DRW_DBG("\nsetting position to: "); DRW_DBG(buf->getPosition());
-    DRW_DBG("\nHeader CRC: "); DRW_DBGH(buf->getRawShort16());
+    { auto crc = buf->getRawShort16(); DRW_DBG("\nHeader CRC: "); DRW_DBGH(crc); }
     DRW_DBG("\nbuf position: "); DRW_DBG(buf->getPosition());
     DRW_DBG("\ndwg header end sentinel= ");
     for (int i=0; i<16;i++) {
-        DRW_DBGH(buf->getRawChar8()); DRW_DBG(" ");
+        auto ch = buf->getRawChar8(); DRW_DBGH(ch); DRW_DBG(" ");
     }
 
     //temporary code to show header end sentinel
@@ -2416,7 +2422,7 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
         DRW_DBG("\nsetting position to: "); DRW_DBG(buf->getPosition());
         DRW_DBG("\ndwg header end sentinel= ");
         for (int i=0; i<16;i++) {
-            DRW_DBGH(buf->getRawChar8()); DRW_DBG(" ");
+            auto ch = buf->getRawChar8(); DRW_DBGH(ch); DRW_DBG(" ");
         }
     } else if (version == DRW::AC1018) {//2004
 //        sz= buf->size()-132;
@@ -2425,7 +2431,7 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
         DRW_DBG("\nsetting position to: "); DRW_DBG(buf->getPosition());
         DRW_DBG("\ndwg header end sentinel= ");
         for (int i=0; i<16;i++) {
-            DRW_DBGH(buf->getRawChar8()); DRW_DBG(" ");
+            auto ch = buf->getRawChar8(); DRW_DBGH(ch); DRW_DBG(" ");
         }
     } else if (version == DRW::AC1021) {//2007
         sz= buf->size()-16;
@@ -2433,7 +2439,7 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
         DRW_DBG("\nsetting position to: "); DRW_DBG(buf->getPosition());
         DRW_DBG("\ndwg header end sentinel= ");
         for (int i=0; i<16;i++) {
-            DRW_DBGH(buf->getRawChar8()); DRW_DBG(" ");
+            auto ch = buf->getRawChar8(); DRW_DBGH(ch); DRW_DBG(" ");
         }
     } else if (version == DRW::AC1024) {//2010
 //        sz= buf->size()-93;
@@ -2442,7 +2448,7 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
         DRW_DBG("\nsetting position to: "); DRW_DBG(buf->getPosition());
         DRW_DBG("\ndwg header end sentinel= ");
         for (int i=0; i<16;i++) {
-            DRW_DBGH(buf->getRawChar8()); DRW_DBG(" ");
+            auto ch = buf->getRawChar8(); DRW_DBGH(ch); DRW_DBG(" ");
         }
     } else if (version == DRW::AC1027) {//2013
 //        sz= buf->size()-76;
@@ -2451,7 +2457,7 @@ bool DRW_Header::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer *hBbuf
         DRW_DBG("\nsetting position to: "); DRW_DBG(buf->getPosition());
         DRW_DBG("\ndwg header end sentinel= ");
         for (int i=0; i<16;i++) {
-            DRW_DBGH(buf->getRawChar8()); DRW_DBG(" ");
+            auto ch = buf->getRawChar8(); DRW_DBGH(ch); DRW_DBG(" ");
         }
     }
 

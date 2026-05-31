@@ -102,7 +102,7 @@ bool dwgReader15::readFileHeader() {
         ckcrc = ckcrc ^ 0x8461;
     }
     DRW_DBG("\nfile header crc8 xor result= "); DRW_DBG(ckcrc);
-    DRW_DBG("\nfile header CRC= "); DRW_DBG(fileBuf->getRawShort16());
+    { duint16 hcrc = fileBuf->getRawShort16(); DRW_DBG("\nfile header CRC= "); DRW_DBG(hcrc); }
     DRW_DBG("\nfile header sentinel= ");
     checkSentinel(fileBuf.get(), secEnum::FILEHEADER, false);
 
@@ -155,7 +155,7 @@ bool dwgReader15::readDwgClasses(){
         cl->parseDwg(version, &buff, &buff);
         classesmap[cl->classNum] = cl;
     }
-     DRW_DBG("\nCRC: "); DRW_DBGH(fileBuf->getRawShort16());
+     { duint16 crc = fileBuf->getRawShort16(); DRW_DBG("\nCRC: "); DRW_DBGH(crc); }
      DRW_DBG("\nclasses section end sentinel= ");
      checkSentinel(fileBuf.get(), secEnum::CLASSES, false);
      bool ret = buff.isGood();

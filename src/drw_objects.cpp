@@ -639,8 +639,8 @@ bool DRW_Layer::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
 
     flags |= buf->getBit()<< 6;//layer have entity
     if (version < DRW::AC1021) {//2004-
-        DRW_DBG(", xrefindex = "); DRW_DBG(buf->getBitShort()); DRW_DBG("\n");
-        //dint16 xrefindex = buf->getBitShort();
+        dint16 xrefindex = buf->getBitShort();
+        DRW_DBG(", xrefindex = "); DRW_DBG(xrefindex); DRW_DBG("\n");
     }
     flags |= buf->getBit() << 4;//is refx dependent
     if (version < DRW::AC1015) {//14-
@@ -1079,14 +1079,19 @@ bool DRW_Vport::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
     viewMode |= buf->getBit() << 2; //view mode, code 71, bit 2 (4)
     viewMode |= buf->getBit() << 4; //view mode, code 71, bit 4 (16)
     if (version > DRW::AC1014) { //2000+
-        //duint8 renderMode = buf->getRawChar8();
-        DRW_DBG("\n renderMode: "); DRW_DBG(buf->getRawChar8());
+        duint8 renderMode = buf->getRawChar8();
+        DRW_DBG("\n renderMode: "); DRW_DBG(renderMode);
         if (version > DRW::AC1018) { //2007+
-            DRW_DBG("\n use default lights: "); DRW_DBG(buf->getBit());
-            DRW_DBG(" default lighting type: "); DRW_DBG(buf->getRawChar8());
-            DRW_DBG(" brightness: "); DRW_DBG(buf->getBitDouble());
-            DRW_DBG("\n contrast: "); DRW_DBG(buf->getBitDouble()); DRW_DBG("\n");
-            DRW_DBG(" ambient color CMC: "); DRW_DBG(buf->getCmColor(version));
+            duint8 udl = buf->getBit();
+            duint8 dlt = buf->getRawChar8();
+            double brightness = buf->getBitDouble();
+            double contrast = buf->getBitDouble();
+            duint32 ambColor = buf->getCmColor(version);
+            DRW_DBG("\n use default lights: "); DRW_DBG(udl);
+            DRW_DBG(" default lighting type: "); DRW_DBG(dlt);
+            DRW_DBG(" brightness: "); DRW_DBG(brightness);
+            DRW_DBG("\n contrast: "); DRW_DBG(contrast); DRW_DBG("\n");
+            DRW_DBG(" ambient color CMC: "); DRW_DBG(ambColor);
         }
     }
     lowerLeft = buf->get2RawDouble();
@@ -1115,17 +1120,25 @@ bool DRW_Vport::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
     snapSpacing = buf->get2RawDouble();
     DRW_DBG("\nsnap Spacing: "); DRW_DBGPT(snapSpacing.x, snapSpacing.y, snapSpacing.z);
     if (version > DRW::AC1014) { //2000+
-        DRW_DBG("\n Unknown: "); DRW_DBG(buf->getBit());
-        DRW_DBG(" UCS per Viewport: "); DRW_DBG(buf->getBit());
-        DRW_DBG("\nUCS origin: "); DRW_DBGPT(buf->getBitDouble(), buf->getBitDouble(), buf->getBitDouble());
-        DRW_DBG("\nUCS X Axis: "); DRW_DBGPT(buf->getBitDouble(), buf->getBitDouble(), buf->getBitDouble());
-        DRW_DBG("\nUCS Y Axis: "); DRW_DBGPT(buf->getBitDouble(), buf->getBitDouble(), buf->getBitDouble());
-        DRW_DBG("\nUCS elevation: "); DRW_DBG(buf->getBitDouble());
-        DRW_DBG(" UCS Orthographic type: "); DRW_DBG(buf->getBitShort());
+        duint8 unk1 = buf->getBit();
+        duint8 ucsPerVp = buf->getBit();
+        DRW_DBG("\n Unknown: "); DRW_DBG(unk1);
+        DRW_DBG(" UCS per Viewport: "); DRW_DBG(ucsPerVp);
+        double ux = buf->getBitDouble(), uy = buf->getBitDouble(), uz = buf->getBitDouble();
+        DRW_DBG("\nUCS origin: "); DRW_DBGPT(ux, uy, uz);
+        double xx = buf->getBitDouble(), xy = buf->getBitDouble(), xz = buf->getBitDouble();
+        DRW_DBG("\nUCS X Axis: "); DRW_DBGPT(xx, xy, xz);
+        double yx = buf->getBitDouble(), yy = buf->getBitDouble(), yz = buf->getBitDouble();
+        DRW_DBG("\nUCS Y Axis: "); DRW_DBGPT(yx, yy, yz);
+        double elev = buf->getBitDouble();
+        DRW_DBG("\nUCS elevation: "); DRW_DBG(elev);
+        dint16 orthoType = buf->getBitShort();
+        DRW_DBG(" UCS Orthographic type: "); DRW_DBG(orthoType);
         if (version > DRW::AC1018) { //2007+
             gridBehavior = buf->getBitShort();
             DRW_DBG(" gridBehavior (flags): "); DRW_DBG(gridBehavior);
-            DRW_DBG(" Grid major: "); DRW_DBG(buf->getBitShort());
+            dint16 gridMajor = buf->getBitShort();
+            DRW_DBG(" Grid major: "); DRW_DBG(gridMajor);
         }
     }
 
