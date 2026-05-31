@@ -261,6 +261,8 @@ private:
     bool processPolyline();
     bool processVertex(DRW_Polyline* pl);
     bool processText();
+    bool processAttdef();
+    bool process3dSolid();
     bool processTolerance();
     bool processMText();
     bool processMLine();
@@ -279,6 +281,7 @@ private:
     bool processArcDimension();
     bool processLeader();
     bool processPlotSettings();
+    bool processAcdsData();
     bool processGroup();
     bool processDictionary();
     bool processScale();

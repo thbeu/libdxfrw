@@ -2962,6 +2962,9 @@ bool dxfRW::processDxf() {
                 else if ("OBJECTS" == sectionname) {
                     processed = processObjects();
                 }
+                else if ("ACDSDATA" == sectionname) {
+                    processed = processAcdsData();
+                }
                 else {
                     DRW_DBG("section unknown or not supported\n");
                     continue;
@@ -3538,6 +3541,10 @@ bool dxfRW::processEntities(bool isblock) {
             processed = processPolyline();
         } else if (nextentity == "TEXT") {
             processed = processText();
+        } else if (nextentity == "ATTDEF") {
+            processed = processAttdef();
+        } else if (nextentity == "3DSOLID") {
+            processed = process3dSolid();
         } else if (nextentity == "MTEXT") {
             processed = processMText();
         } else if (nextentity == "MLINE") {
@@ -5255,4 +5262,115 @@ bool dxfRW::setError(const DRW::error lastError)
 {
     error = lastError;
     return (DRW::BAD_NONE == error);
+}
+
+bool dxfRW::processAttdef() {
+    DRW_DBG("dxfRW::processAttdef");
+    int code;
+    DRW_Attdef attdef;
+    while (reader->readRec(&code)) {
+        DRW_DBG(code); DRW_DBG("\n");
+        if (0 == code) {
+            nextentity = reader->getString();
+            DRW_DBG(nextentity); DRW_DBG("\n");
+            // If text (group 1) is empty, use tag name as display text
+            if (attdef.text.empty() && !attdef.tag.empty())
+                attdef.text = attdef.tag;
+            iface->addAttdef(attdef);
+            return true;
+        }
+        if (!attdef.parseCode(code, reader)) {
+            return setError(DRW::BAD_CODE_PARSED);
+        }
+    }
+    return setError(DRW::BAD_READ_ENTITIES);
+}
+
+bool dxfRW::process3dSolid() {
+    DRW_DBG("dxfRW::process3dSolid");
+    int code;
+    DRW_Point ent;
+    while (reader->readRec(&code)) {
+        DRW_DBG(code); DRW_DBG("\n");
+        if (0 == code) {
+            nextentity = reader->getString();
+            DRW_DBG(nextentity); DRW_DBG("\n");
+            iface->add3dSolid(ent);
+            return true;
+        }
+        if (!ent.parseCode(code, reader)) {
+            return setError(DRW::BAD_CODE_PARSED);
+        }
+    }
+    return setError(DRW::BAD_READ_ENTITIES);
+}
+
+bool dxfRW::processAcdsData() {
+    DRW_DBG("dxfRW::processAcdsData\n");
+    int code;
+    // Read section-level group codes until first entity (group 0)
+    while (reader->readRec(&code)) {
+        if (0 == code) {
+            nextentity = reader->getString();
+            break;
+        }
+        // Skip section header codes (70, 71, etc.)
+    }
+
+    while ("ENDSEC" != nextentity) {
+        if ("ACDSRECORD" == nextentity) {
+            // Parse one ACDSRECORD
+            std::string entityHandle;
+            std::string hexData;
+            bool inAsmData = false;
+            while (reader->readRec(&code)) {
+                if (0 == code) {
+                    nextentity = reader->getString();
+                    break;
+                }
+                switch (code) {
+                    case 320:
+                        entityHandle = reader->getString();
+                        break;
+                    case 2: {
+                        std::string val = reader->getString();
+                        if (val == "ASM_Data")
+                            inAsmData = true;
+                        break;
+                    }
+                    case 310:
+                        if (inAsmData)
+                            hexData += reader->getString();
+                        break;
+                    default:
+                        break;
+                }
+            }
+            if (!hexData.empty() && !entityHandle.empty()) {
+                // Decode hex to bytes
+                std::vector<unsigned char> bytes;
+                bytes.reserve(hexData.size() / 2);
+                for (size_t i = 0; i + 1 < hexData.size(); i += 2) {
+                    auto hv = [](char c) -> unsigned char {
+                        if (c >= '0' && c <= '9') return (unsigned char)(c - '0');
+                        if (c >= 'A' && c <= 'F') return (unsigned char)(c - 'A' + 10);
+                        if (c >= 'a' && c <= 'f') return (unsigned char)(c - 'a' + 10);
+                        return 0;
+                    };
+                    bytes.push_back((unsigned char)((hv(hexData[i]) << 4) | hv(hexData[i + 1])));
+                }
+                iface->addAcdsData(entityHandle, bytes);
+            }
+        }
+        else {
+            // Skip ACDSSCHEMA or other entries
+            while (reader->readRec(&code)) {
+                if (0 == code) {
+                    nextentity = reader->getString();
+                    break;
+                }
+            }
+        }
+    }
+    return true;
 }
