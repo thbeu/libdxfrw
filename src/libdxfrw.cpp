@@ -4274,7 +4274,7 @@ bool dxfRW::processHelix() {
     DRW_DBG("dxfRW::processHelix");
     int code;
     DRW_Spline sp;
-    bool inSpline = false;
+    int section = 0; // 0=entity, 1=spline, 2=helix
     while (reader->readRec(&code)) {
         DRW_DBG(code); DRW_DBG("\n");
         if (0 == code) {
@@ -4287,18 +4287,21 @@ bool dxfRW::processHelix() {
         if (100 == code) {
             std::string sub = reader->getString();
             if (sub == "AcDbSpline")
-                inSpline = true;
+                section = 1;
             else if (sub == "AcDbHelix")
-                inSpline = false;
+                section = 2;
             else
                 sp.parseCode(code, reader);
             continue;
         }
-        if (inSpline) {
+        if (section == 1) {
             if (!sp.parseCode(code, reader))
                 return setError(DRW::BAD_CODE_PARSED);
+        } else if (section == 0) {
+            // Parse entity-level codes (layer, color, etc.) before AcDbSpline
+            sp.parseCode(code, reader);
         }
-        // skip non-spline codes (proxy graphics, helix params)
+        // section == 2 (AcDbHelix): skip helix-specific codes
     }
 
     return setError(DRW::BAD_READ_ENTITIES);
