@@ -21,14 +21,15 @@
 
 #define DRW_DBGSL(a) DRW_dbg::getInstance()->setLevel(a)
 #define DRW_DBGGL DRW_dbg::getInstance()->getLevel()
-#define DRW_DBG(a) DRW_dbg::getInstance()->print(a)
-#define DRW_DBGH(a) DRW_dbg::getInstance()->printH(a)
-#define DRW_DBGB(a) DRW_dbg::getInstance()->printB(a)
-#define DRW_DBGHL(a, b, c) DRW_dbg::getInstance()->printHL(a, b ,c)
-#define DRW_DBGPT(a, b, c) DRW_dbg::getInstance()->printPT(a, b, c)
+#define DRW_DBG(a) do { if (DRW_dbg::enabled) DRW_dbg::getInstance()->print(a); } while(0)
+#define DRW_DBGH(a) do { if (DRW_dbg::enabled) DRW_dbg::getInstance()->printH(a); } while(0)
+#define DRW_DBGB(a) do { if (DRW_dbg::enabled) DRW_dbg::getInstance()->printB(a); } while(0)
+#define DRW_DBGHL(a, b, c) do { if (DRW_dbg::enabled) DRW_dbg::getInstance()->printHL(a, b ,c); } while(0)
+#define DRW_DBGPT(a, b, c) do { if (DRW_dbg::enabled) DRW_dbg::getInstance()->printPT(a, b, c); } while(0)
 
 class DRW_dbg {
 public:
+    static bool enabled;
     enum class Level {
         None,
         Debug

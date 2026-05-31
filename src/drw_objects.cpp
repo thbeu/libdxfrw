@@ -1481,8 +1481,8 @@ bool DRW_Layer::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
 
     flags |= buf->getBit()<< 6;//layer have entity
     if (version < DRW::AC1021) {//2004-
-        DRW_DBG(", xrefindex = "); DRW_DBG(buf->getBitShort()); DRW_DBG("\n");
-        //std::int16_t xrefindex = buf->getBitShort();
+        std::int16_t xrefindex = buf->getBitShort();
+        DRW_DBG(", xrefindex = "); DRW_DBG(xrefindex); DRW_DBG("\n");
     }
     flags |= buf->getBit() << 4;//is refx dependent
     if (version < DRW::AC1015) {//14-
@@ -1918,14 +1918,19 @@ bool DRW_Vport::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
     viewMode |= buf->getBit() << 2; //view mode, code 71, bit 2 (4)
     viewMode |= buf->getBit() << 4; //view mode, code 71, bit 4 (16)
     if (version > DRW::AC1014) { //2000+
-        //std::uint8_t renderMode = buf->getRawChar8();
-        DRW_DBG("\n renderMode: "); DRW_DBG(buf->getRawChar8());
+        std::uint8_t renderMode = buf->getRawChar8();
+        DRW_DBG("\n renderMode: "); DRW_DBG(renderMode);
         if (version > DRW::AC1018) { //2007+
-            DRW_DBG("\n use default lights: "); DRW_DBG(buf->getBit());
-            DRW_DBG(" default lighting type: "); DRW_DBG(buf->getRawChar8());
-            DRW_DBG(" brightness: "); DRW_DBG(buf->getBitDouble());
-            DRW_DBG("\n contrast: "); DRW_DBG(buf->getBitDouble()); DRW_DBG("\n");
-            DRW_DBG(" ambient color CMC: "); DRW_DBG(buf->getCmColor(version));
+            std::uint8_t udl = buf->getBit();
+            std::uint8_t dlt = buf->getRawChar8();
+            double brightness = buf->getBitDouble();
+            double contrast = buf->getBitDouble();
+            std::uint32_t ambColor = buf->getCmColor(version);
+            DRW_DBG("\n use default lights: "); DRW_DBG(udl);
+            DRW_DBG(" default lighting type: "); DRW_DBG(dlt);
+            DRW_DBG(" brightness: "); DRW_DBG(brightness);
+            DRW_DBG("\n contrast: "); DRW_DBG(contrast); DRW_DBG("\n");
+            DRW_DBG(" ambient color CMC: "); DRW_DBG(ambColor);
         }
     }
     lowerLeft = buf->get2RawDouble();
@@ -1954,31 +1959,25 @@ bool DRW_Vport::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
     snapSpacing = buf->get2RawDouble();
     DRW_DBG("\nsnap Spacing: "); DRW_DBGPT(snapSpacing.x, snapSpacing.y, snapSpacing.z);
     if (version > DRW::AC1014) { //2000+
-        // Sequenced one-statement-per-field reads (NOT inside DRW_DBGPT macro
-        // args — argument evaluation order is unspecified there).
-        buf->getBit(); // ucs_at_origin (unknown/unused)
-        ucsPerVP = buf->getBit();
-        ucsOrigin.x = buf->getBitDouble();
-        ucsOrigin.y = buf->getBitDouble();
-        ucsOrigin.z = buf->getBitDouble();
-        ucsXAxis.x = buf->getBitDouble();
-        ucsXAxis.y = buf->getBitDouble();
-        ucsXAxis.z = buf->getBitDouble();
-        ucsYAxis.x = buf->getBitDouble();
-        ucsYAxis.y = buf->getBitDouble();
-        ucsYAxis.z = buf->getBitDouble();
-        ucsElevation = buf->getBitDouble();
-        ucsOrthoType = buf->getBitShort();
-        DRW_DBG("\n UCS per Viewport: "); DRW_DBG(ucsPerVP);
-        DRW_DBG("\nUCS origin: "); DRW_DBGPT(ucsOrigin.x, ucsOrigin.y, ucsOrigin.z);
-        DRW_DBG("\nUCS X Axis: "); DRW_DBGPT(ucsXAxis.x, ucsXAxis.y, ucsXAxis.z);
-        DRW_DBG("\nUCS Y Axis: "); DRW_DBGPT(ucsYAxis.x, ucsYAxis.y, ucsYAxis.z);
-        DRW_DBG("\nUCS elevation: "); DRW_DBG(ucsElevation);
-        DRW_DBG(" UCS Orthographic type: "); DRW_DBG(ucsOrthoType);
+        std::uint8_t unk1 = buf->getBit();
+        std::uint8_t ucsPerVp = buf->getBit();
+        DRW_DBG("\n Unknown: "); DRW_DBG(unk1);
+        DRW_DBG(" UCS per Viewport: "); DRW_DBG(ucsPerVp);
+        double ux = buf->getBitDouble(), uy = buf->getBitDouble(), uz = buf->getBitDouble();
+        DRW_DBG("\nUCS origin: "); DRW_DBGPT(ux, uy, uz);
+        double xx = buf->getBitDouble(), xy = buf->getBitDouble(), xz = buf->getBitDouble();
+        DRW_DBG("\nUCS X Axis: "); DRW_DBGPT(xx, xy, xz);
+        double yx = buf->getBitDouble(), yy = buf->getBitDouble(), yz = buf->getBitDouble();
+        DRW_DBG("\nUCS Y Axis: "); DRW_DBGPT(yx, yy, yz);
+        double elev = buf->getBitDouble();
+        DRW_DBG("\nUCS elevation: "); DRW_DBG(elev);
+        std::int16_t orthoType = buf->getBitShort();
+        DRW_DBG(" UCS Orthographic type: "); DRW_DBG(orthoType);
         if (version > DRW::AC1018) { //2007+
             gridBehavior = buf->getBitShort();
             DRW_DBG(" gridBehavior (flags): "); DRW_DBG(gridBehavior);
-            DRW_DBG(" Grid major: "); DRW_DBG(buf->getBitShort());
+            std::int16_t gridMajor = buf->getBitShort();
+            DRW_DBG(" Grid major: "); DRW_DBG(gridMajor);
         }
     }
 
@@ -2514,7 +2513,8 @@ bool DRW_View::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs){
 
     flags |= buf->getBit() << 6; // code 70, bit 7 (64)
     if (version < DRW::AC1021) { //2004-
-        DRW_DBG("xrefindex = "); DRW_DBG(buf->getBitShort()); DRW_DBG("\n");
+        std::int16_t xrefindex = buf->getBitShort();
+        DRW_DBG("xrefindex = "); DRW_DBG(xrefindex); DRW_DBG("\n");
     }
     flags |= buf->getBit() << 4; // code 70, bit 5 (16), xref-dependent
 
