@@ -141,6 +141,8 @@ private:
     bool processPolyline();
     bool processVertex(DRW_Polyline* pl);
     bool processText();
+    bool processAttdef();
+    bool process3dSolid();
     bool processMText();
     bool processMLine();
     bool processUnderlay(const std::string& kind);
@@ -156,6 +158,7 @@ private:
     bool processDimension();
     bool processLeader();
     bool processPlotSettings();
+    bool processAcdsData();
 
 //    bool writeHeader();
     bool writeEntity(DRW_Entity *ent);

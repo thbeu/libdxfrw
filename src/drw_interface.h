@@ -152,6 +152,9 @@ public:
     /** Called for every Text entity. */
     virtual void addText(const DRW_Text& data) = 0;
 
+    /** Called for every Attribute Definition entity. */
+    virtual void addAttdef(const DRW_Attdef& data) { addText(data); }
+
     /**
      * Called for every aligned dimension entity. 
      */
@@ -259,6 +262,12 @@ public:
      * (drawingUnits / paperUnits, e.g. "1:48" → 48).
      */
     virtual void addScale(const DRW_Scale& data) { (void) data; }
+
+    /** Called for every 3DSOLID entity (provides entity properties). */
+    virtual void add3dSolid(const DRW_Entity& data) { (void)data; }
+
+    /** Called for ACDSRECORD ASM_Data (SAB binary linked to an entity handle). */
+    virtual void addAcdsData(const std::string& entityHandle, const std::vector<unsigned char>& data) { (void)entityHandle; (void)data; }
 
     /**
      * Called for every comment in the DXF file (code 999).
