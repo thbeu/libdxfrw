@@ -37,29 +37,6 @@ public:
     std::uint32_t loc{0};
 };
 
-/// Map a DWG file-header codepage id (libreDWG codepages.h) to a
-/// DRW_TextCodec ANSI codepage name.  Returns nullptr for unknown/unsupported
-/// ids so the caller keeps the ANSI_1252 default (no worse than before).
-const char* dwgCodePageName(std::uint16_t cp);
-
-/// Inverse of dwgCodePageName(): map a DRW_TextCodec ANSI codepage name to
-/// the DWG file-header codepage integer used on disk. Returns 30 (ANSI_1252)
-/// for `nullptr`, the literal "ANSI_1252", or any name not in the round-trip
-/// set. Used by writers to emit the codepage byte at the file-header offset
-/// matching the reader's expected offset.
-std::uint16_t dwgCodePageId(const char* name);
-
-/// Decode an EED-attached pre-R2007 string from its source codepage to UTF-8.
-/// `cp` is the DWG codepage integer carried per-EED-string (ODA DWG spec §28
-/// "RS_BE codepage"). When `cp` resolves via dwgCodePageName(), build a
-/// temporary AC1015-bound DRW_TextCodec for that codepage and decode through
-/// it. Otherwise fall back to the file-level @p fallback decoder. Empty input
-/// returns empty. R2007+ entity-EED strings are UTF-16LE and bypass this
-/// helper entirely (caller handles them inline).
-std::string decodeEedString(std::uint16_t cp,
-                            const std::string& raw,
-                            DRW_TextCodec* fallback);
-
 //until 2000 = 2000-
 //since 2004 except 2007 = 2004+
 // 2007 = 2007
@@ -86,13 +63,13 @@ public:
     dwgPageInfo(std::uint64_t i, std::uint64_t ad, std::uint64_t sz){
         Id=i; address=ad; size=sz;
     }
-    std::uint64_t Id{0};
-    std::uint64_t address{0}; //in file stream, for rd18, rd21
-    std::uint64_t size{0}; //in file stream, for rd18, rd21
-    std::uint64_t dataSize{0}; //for rd18, rd21
-    std::uint64_t startOffset{0}; //for rd18, rd21
-    std::uint64_t cSize{0}; //compressed page size, for rd21
-    std::uint64_t uSize{0}; //uncompressed page size, for rd21
+    std::uint64_t Id;
+    std::uint64_t address; //in file stream, for rd18, rd21
+    std::uint64_t size; //in file stream, for rd18, rd21
+    std::uint64_t dataSize; //for rd18, rd21
+    std::uint64_t startOffset; //for rd18, rd21
+    std::uint64_t cSize; //compressed page size, for rd21
+    std::uint64_t uSize; //uncompressed page size, for rd21
 };
 
 // sections of file
@@ -114,11 +91,25 @@ public:
     std::uint64_t compressed{1};//is compressed? 1=no, 2=yes rd18, rd21(encoding)
     std::uint64_t encrypted{0};//encrypted (doc: 0=no, 1=yes, 2=unkn) on read: objects 0 and encrypted yes rd18
     std::unordered_map<std::uint64_t, dwgPageInfo >pages;//index, size, offset
-    std::uint64_t size{0};//size of section,  2000- rd15, rd18, rd21 (data size)
+    std::uint64_t size;//size of section,  2000- rd15, rd18, rd21 (data size)
     std::uint64_t pageCount{0}; //number of pages (dwgPageInfo) in section rd18, rd21
-    std::uint64_t maxSize{0}; //max decompressed size (needed??) rd18 rd21
-    std::uint64_t address{0}; //address (seek) , 2000-
+    std::uint64_t maxSize; //max decompressed size (needed??) rd18 rd21
+    std::uint64_t address; //address (seek) , 2000-
 };
+
+const char* dwgCodePageName(std::uint16_t cp);
+/// Inverse of dwgCodePageName(): map a DRW_TextCodec ANSI codepage name to
+/// the DWG file-header codepage integer used on disk. Returns 30 (ANSI_1252)
+/// for nullptr, the literal "ANSI_1252", or any name not in the round-trip
+/// set.
+std::uint16_t dwgCodePageId(const char* name);
+/// Decode an extended-entity-data (EED) string with a codepage hint.
+/// When cp resolves via dwgCodePageName(), build a temporary AC1015-bound
+/// DRW_TextCodec for that codepage and decode through it. Otherwise fall
+/// back to the file-level fallback decoder. Empty input returns empty string.
+std::string decodeEedString(std::uint16_t cp,
+                            const std::string& raw,
+                            DRW_TextCodec* fallback);
 
 
 //! Class to handle dwg obj control entries
@@ -175,6 +166,31 @@ protected:
 
     void setCodePage(const std::string &c){decoder.setCodePage(c, false);}
     std::string getCodePage(){ return decoder.getCodePage();}
+    /** Map a DWG header codepage ID to the corresponding ANSI codepage string
+     *  and update the decoder.  IDs follow the Open Design Specification. */
+    void setCodePageNum(std::uint16_t cp){
+        const char* name = nullptr;
+        switch (cp) {
+        case 28: name = "ANSI_1250"; break; // Central European
+        case 29: name = "ANSI_1251"; break; // Cyrillic
+        case 30: name = "ANSI_1252"; break; // Western European
+        case 31: name = "ANSI_936";  break; // GB2312 (Simplified Chinese)
+        case 32: name = "ANSI_1253"; break; // Greek
+        case 33: name = "ANSI_1254"; break; // Turkish
+        case 34: name = "ANSI_1255"; break; // Hebrew
+        case 35: name = "ANSI_1256"; break; // Arabic
+        case 36: name = "ANSI_1257"; break; // Baltic
+        case 37: name = "ANSI_874";  break; // Thai
+        case 38: name = "ANSI_932";  break; // Japanese
+        case 39: name = "ANSI_936";  break; // Simplified Chinese (GBK)
+        case 40: name = "ANSI_949";  break; // Korean
+        case 41: name = "ANSI_950";  break; // Traditional Chinese
+        case 44: name = "ANSI_1258"; break; // Vietnamese
+        default: break;
+        }
+        if (name)
+            decoder.setCodePage(name, false);
+    }
     bool readDwgHeader(DRW_Header& hdr, dwgBuffer *buf, dwgBuffer *hBuf);
     bool readDwgHandles(dwgBuffer *dbuf, std::uint64_t offset, std::uint64_t size);
     bool readDwgTables(DRW_Header& hdr, dwgBuffer *dbuf);
@@ -197,19 +213,24 @@ public:
     std::unordered_map<std::uint32_t, objHandle>remainingMap; //stores the objects & entities not read in all processes, for debug only
     std::unordered_map<std::uint32_t, DRW_LType*> ltypemap;
     std::unordered_map<std::uint32_t, DRW_Layer*> layermap;
-    /// Layer / linetype names in file storage order (the handlesList iteration
-    /// order). This is the index space the proxy-graphics ATTRIBUTE_LAYER(16) /
-    /// ATTRIBUTE_LINETYPE(18) opcodes reference; each slot is index-aligned with
-    /// the control's handlesList (empty string for a missing record). Verified
-    /// byte-identical to the dwgread/LibreDWG layer order. See
-    /// DRW_ProxyGraphicDecoder::decode.
-    std::vector<std::string> m_layerNameOrder;
-    std::vector<std::string> m_ltypeNameOrder;
     std::unordered_map<std::uint32_t, DRW_Block*> blockmap;
     std::unordered_map<std::uint32_t, DRW_Textstyle*> stylemap;
     std::unordered_map<std::uint32_t, DRW_Dimstyle*> dimstylemap;
     std::unordered_map<std::uint32_t, DRW_Vport*> vportmap;
     std::unordered_map<std::uint32_t, DRW_Block_Record*> blockRecordmap;
+    std::vector<std::string> m_layerNameOrder;
+    std::vector<std::string> m_ltypeNameOrder;
+    /// Tracks proxy-graphics that were successfully decoded (libredwg's
+    /// proxygraphics.c / proxyDecodeGraphics).  These are rendered as
+    /// normal primitives by the proxy encoder.
+    size_t m_decodedProxyPrimitives = 0;
+    /// OBJECTS-section records that libdxfrw still cannot decode. Unlike
+    /// m_skippedCustomClasses (which are oType>=500 entities that bypassed
+    /// readDwgEntity), this tracks object-type records that entered
+    /// readDwgObject but whose decode was aborted --- reactors, filters,
+    /// TABLECONTENT, dynamic-block graphs, etc.
+    std::unordered_map<std::string, size_t> m_skippedUnsupportedObjects;
+    std::vector<DRW_RawDwgSection> m_rawDwgSections;
 
     /// Resolved DBCOLOR (AcDbColor) lookup, populated as the OBJECTS section
     /// is decoded.  Key: handle of the AcDbColor object.  Value: pair of
@@ -244,6 +265,8 @@ public:
     /// fails the import, which previously discarded the whole drawing). Non-fatal
     /// diagnostic, surfaced via dwgRW::getClassesCrcMismatch().
     size_t m_classesCrcMismatch = 0;
+    /// Reusable buffer for readDwgEntity to avoid repeated allocations.
+    std::vector<std::uint8_t> m_entityBuf;
     /// Custom-class entities (oType >= 500, recName not in our hardcoded
     /// dwgType map) that fell through readDwgEntity's default branch and
     /// got stuffed into objObjectMap.  Keyed by the DXF recName (eg
@@ -252,16 +275,6 @@ public:
     /// proxy-capable graphics — whose geometry never reaches the
     /// renderer.  Surface to the user so they know what's missing.
     std::unordered_map<std::string, size_t> m_skippedCustomClasses;
-    /// Count of render primitives recovered by decoding the cached proxy
-    /// graphics of raw-net custom entities (STDPART2D, AEC_*, …) — these are
-    /// emitted through the interface IN ADDITION to the raw object, so a
-    /// non-zero value means previously-invisible geometry now renders.
-    size_t m_decodedProxyPrimitives = 0;
-    /// OBJECTS-section records that libdxfrw still cannot decode. Unlike
-    /// m_skippedCustomClasses, this also includes non-graphical metadata such
-    /// as reactors, filters, TABLECONTENT, dynamic-block graphs, etc.
-    std::unordered_map<std::string, size_t> m_skippedUnsupportedObjects;
-    std::vector<DRW_RawDwgSection> m_rawDwgSections;
     std::unordered_map<std::uint32_t, DRW_AppId*> appIdmap;
     std::unordered_map<std::uint32_t, DRW_View*> viewmap;
     std::unordered_map<std::uint32_t, DRW_UCS*> ucsmap;
@@ -275,13 +288,6 @@ public:
     std::unordered_map<std::uint32_t, std::vector<std::shared_ptr<DRW_Attrib>>> m_orphanAttribs;
 //    std::uint32_t currBlock;
     std::uint8_t maintenanceVersion{0};
-    // Application maintenance release version (file-header byte 0x12). This —
-    // NOT maintenanceVersion (byte 0x0B, the "maintenance release version") —
-    // is the field that gates the R2010+ hSize/bitsize_hi reads (libreDWG
-    // calls byte 0x0B `is_maint` and reads its gate field `maint_version` from
-    // 0x12). On ODA-converted files both bytes are > 3 so the distinction is
-    // invisible, but genuine AutoCAD RTM files can have 0x0B <= 3 with 0x12 > 3.
-    std::uint8_t appMaintenanceVersion{0};
 
 protected:
     std::unique_ptr<dwgBuffer> fileBuf;
@@ -302,6 +308,13 @@ protected:
 //    std::uint32_t blockCtrl;
     std::uint32_t nextEntLink{0};
     std::uint32_t prevEntLink{0};
+
+    // parseAttribs cache: avoid repeated map lookups + string copies
+    // for consecutive entities on the same layer/linetype.
+    std::uint32_t m_cachedLyRef{0xFFFFFFFF};
+    std::string m_cachedLyName;
+    std::uint32_t m_cachedLtRef{0xFFFFFFFF};
+    std::string m_cachedLtName;
 
 private:
     template <class T>
