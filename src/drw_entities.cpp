@@ -2057,16 +2057,18 @@ void DRW_Spline::encodeDwgSplineBody(DRW::Version version, dwgBufferW *buf) cons
     if (scenario == 1) {
         for (double k : knotslist) buf->putBitDouble(k);
         for (size_t i = 0; i < controllist.size(); ++i) {
-            buf->put3BitDouble(*controllist[i]);
+            buf->put3BitDouble(controllist[i]);
             if (!weightlist.empty()) {
                 double w = (i < weightlist.size()) ? weightlist[i] : 1.0;
                 buf->putBitDouble(w);
             }
         }
     } else {
-        for (const auto& fp : fitlist) buf->put3BitDouble(*fp);
+        for (const auto& fp : fitlist) buf->put3BitDouble(fp);
     }
 }
+
+// DRW_Helix::encodeDwg — spline body (oType = HELIX class 503) + AcDbHelix
 
 // DRW_Helix::encodeDwg — spline body (oType = HELIX class 503) + AcDbHelix
 // trailer, then the common entity handle data. Trailer field order MUST match
@@ -2304,9 +2306,9 @@ bool DRW_LWPolyline::encodeDwg(DRW::Version version, dwgBufferW *buf, std::uint3
     bool anyWidth = false;
     bool anyVertexId = false;
     for (const auto& v : vertlist) {
-        if (v && v->bulge    != 0.0) anyBulge = true;
-        if (v && (v->stawidth != 0.0 || v->endwidth != 0.0)) anyWidth = true;
-        if (v && v->identifier != 0) anyVertexId = true;
+        if (v.bulge    != 0.0) anyBulge = true;
+        if (v.stawidth != 0.0 || v.endwidth != 0.0) anyWidth = true;
+        if (v.identifier != 0) anyVertexId = true;
     }
     if (anyBulge) dwgFlags |= 0x10;
     if (anyWidth) dwgFlags |= 0x20;
@@ -2330,24 +2332,24 @@ bool DRW_LWPolyline::encodeDwg(DRW::Version version, dwgBufferW *buf, std::uint3
         // First vertex as 2RD.  Subsequent vertices as 2DD relative to
         // the previous, with putDefaultDouble always emitting code 0b11
         // (full RD); the reader's getDefaultDouble returns the raw value.
-        buf->putRawDouble(vertlist[0]->x);
-        buf->putRawDouble(vertlist[0]->y);
+        buf->putRawDouble(vertlist[0].x);
+        buf->putRawDouble(vertlist[0].y);
         for (size_t i = 1; i < vertlist.size(); ++i) {
-            buf->putDefaultDouble(vertlist[i-1]->x, vertlist[i]->x);
-            buf->putDefaultDouble(vertlist[i-1]->y, vertlist[i]->y);
+            buf->putDefaultDouble(vertlist[i-1].x, vertlist[i].x);
+            buf->putDefaultDouble(vertlist[i-1].y, vertlist[i].y);
         }
         if (dwgFlags & 0x10) {
             for (const auto& v : vertlist)
-                buf->putBitDouble(v->bulge);
+                buf->putBitDouble(v.bulge);
         }
         if (version > DRW::AC1021 && (dwgFlags & 0x400)) {
             for (const auto& v : vertlist)
-                buf->putBitLong(static_cast<std::int32_t>(v->identifier));
+                buf->putBitLong(static_cast<std::int32_t>(v.identifier));
         }
         if (dwgFlags & 0x20) {
             for (const auto& v : vertlist) {
-                buf->putBitDouble(v->stawidth);
-                buf->putBitDouble(v->endwidth);
+                buf->putBitDouble(v.stawidth);
+                buf->putBitDouble(v.endwidth);
             }
         }
     }
@@ -3750,10 +3752,10 @@ void DRW_LWPolyline::applyExtrusion(){
         calculateAxis(extPoint);
         for (unsigned int i=0; i<vertlist.size(); i++) {
 			auto& vert = vertlist.at(i);
-            DRW_Coord v(vert->x, vert->y, elevation);
+            DRW_Coord v(vert.x, vert.y, elevation);
             extrudePoint(extPoint, &v);
-            vert->x = v.x;
-            vert->y = v.y;
+            vert.x = v.x;
+            vert.y = v.y;
         }
     }
 }
@@ -3761,8 +3763,8 @@ void DRW_LWPolyline::applyExtrusion(){
 bool DRW_LWPolyline::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     switch (code) {
     case 10: {
-		vertex = std::make_shared<DRW_Vertex2D>();
-        vertlist.push_back(vertex);
+        vertlist.emplace_back();
+        vertex = &vertlist.back();
         vertex->x = reader->getDouble();
         break; }
     case 20:
@@ -3875,36 +3877,35 @@ bool DRW_LWPolyline::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_
 
     if (vertexnum > 0) { //verify if is lwpol without vertex (empty)
         // add vertexes
-		vertex = std::make_shared<DRW_Vertex2D>();
-        vertex->x = buf->getRawDouble();
-        vertex->y = buf->getRawDouble();
-        vertlist.push_back(vertex);
-		auto pv = vertex;
+        vertlist.reserve(vertexnum); // prevent reallocation invalidating pointers
+        vertlist.emplace_back();
+        auto* pv = &vertlist.back();
+        pv->x = buf->getRawDouble();
+        pv->y = buf->getRawDouble();
         for (int i = 1; i< vertexnum; i++){
-			vertex = std::make_shared<DRW_Vertex2D>();
+            vertlist.emplace_back();
+            auto* cv = &vertlist.back();
 			if (version < DRW::AC1015) {//14-
-                vertex->x = buf->getRawDouble();
-                vertex->y = buf->getRawDouble();
+                cv->x = buf->getRawDouble();
+                cv->y = buf->getRawDouble();
             } else {
-//                DRW_Vertex2D *pv = vertlist.back();
-                vertex->x = buf->getDefaultDouble(pv->x);
-                vertex->y = buf->getDefaultDouble(pv->y);
+                cv->x = buf->getDefaultDouble(pv->x);
+                cv->y = buf->getDefaultDouble(pv->y);
             }
-            pv = vertex;
-            vertlist.push_back(vertex);
+            pv = cv;
         }
         //add bulges
         for (unsigned int i = 0; i < bulgesnum; i++){
             double bulge = buf->getBitDouble();
             if (vertlist.size()> i)
-                vertlist.at(i)->bulge = bulge;
+                vertlist[i].bulge = bulge;
         }
         //add vertexId
         if (version > DRW::AC1021) {//2010+
             for (int i = 0; i < vertexIdCount; i++){
                 std::int32_t vertexId = buf->getBitLong();
                 if (static_cast<size_t>(i) < vertlist.size())
-                    vertlist.at(i)->identifier = vertexId;
+                    vertlist[i].identifier = vertexId;
             }
         }
         //add widths
@@ -3912,20 +3913,19 @@ bool DRW_LWPolyline::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_
             double staW = buf->getBitDouble();
             double endW = buf->getBitDouble();
             if (i < vertlist.size()) {
-                vertlist.at(i)->stawidth = staW;
-                vertlist.at(i)->endwidth = endW;
+                vertlist[i].stawidth = staW;
+                vertlist[i].endwidth = endW;
             }
         }
     }
     if (DRW_DBGGL == DRW_dbg::Level::Debug){
         DRW_DBG("\nVertex list: ");
         for (auto& pv: vertlist) {
-            DRW_DBG("\n   x: "); DRW_DBG(pv->x); DRW_DBG(" y: "); DRW_DBG(pv->y); DRW_DBG(" bulge: "); DRW_DBG(pv->bulge);
-            DRW_DBG(" stawidth: "); DRW_DBG(pv->stawidth); DRW_DBG(" endwidth: "); DRW_DBG(pv->endwidth);
-            DRW_DBG(" identifier: "); DRW_DBG(pv->identifier);
+            DRW_DBG("\n   x: "); DRW_DBG(pv.x); DRW_DBG(" y: "); DRW_DBG(pv.y); DRW_DBG(" bulge: "); DRW_DBG(pv.bulge);
+            DRW_DBG(" stawidth: "); DRW_DBG(pv.stawidth); DRW_DBG(" endwidth: "); DRW_DBG(pv.endwidth);
+            DRW_DBG(" identifier: "); DRW_DBG(pv.identifier);
         }
     }
-
     DRW_DBG("\n");
     /* Common Entity Handle Data */
     ret = DRW_Entity::parseDwgEntHandle(version, buf);
@@ -5471,7 +5471,7 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     case 10:
         // Spline edge: 10 is a control-point x-coord.
         if (spline) {
-            spline->controllist.push_back(std::make_shared<DRW_Coord>(reader->getDouble(), 0.0, 0.0));
+            spline->controllist.push_back(DRW_Coord(reader->getDouble(), 0.0, 0.0));
             break;
         }
         if (pt) pt->basePoint.x = reader->getDouble();
@@ -5488,7 +5488,7 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
         break;
     case 20:
         if (spline && !spline->controllist.empty()) {
-            spline->controllist.back()->y = reader->getDouble();
+            spline->controllist.back().y = reader->getDouble();
             break;
         }
         if (pt) pt->basePoint.y = reader->getDouble();
@@ -5499,7 +5499,7 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
     case 11:
         // Spline edge: 11 is a fit-point x-coord.
         if (spline) {
-            spline->fitlist.push_back(std::make_shared<DRW_Coord>(reader->getDouble(), 0.0, 0.0));
+            spline->fitlist.push_back(DRW_Coord(reader->getDouble(), 0.0, 0.0));
             break;
         }
         if (line) line->secPoint.x = reader->getDouble();
@@ -5507,7 +5507,7 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
         break;
     case 21:
         if (spline && !spline->fitlist.empty()) {
-            spline->fitlist.back()->y = reader->getDouble();
+            spline->fitlist.back().y = reader->getDouble();
             break;
         }
         if (line) line->secPoint.y = reader->getDouble();
@@ -5888,9 +5888,9 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
                         spline->knotslist.push_back (buf->getBitDouble());
                     }
                     for (std::int32_t j = 0; j < spline->ncontrol;++j){
-                        std::shared_ptr<DRW_Coord> crd = std::make_shared<DRW_Coord>(buf->get2RawDouble());
+                        DRW_Coord crd(buf->get2RawDouble());
                         if(isRational)
-                            crd->z =  buf->getBitDouble(); //RLZ: investigate how store weight
+                            crd.z =  buf->getBitDouble(); //RLZ: investigate how store weight
                         spline->controllist.push_back(crd);
                     }
                     if (version > DRW::AC1021) { //2010+
@@ -5906,7 +5906,7 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
                                 return false;
                             }
                             for (std::int32_t j = 0; j < spline->nfit;++j){
-                                std::shared_ptr<DRW_Coord> crd = std::make_shared<DRW_Coord>(buf->get2RawDouble());
+                                DRW_Coord crd(buf->get2RawDouble());
                                 spline->fitlist.push_back(crd);
                             }
                             spline->tgStart = buf->get2RawDouble();
@@ -6073,10 +6073,10 @@ bool DRW_Hatch::encodeDwg(DRW::Version version, dwgBufferW *buf, std::uint32_t b
                     for (double k : sp->knotslist)
                         buf->putBitDouble(k);
                     for (const auto& cp : sp->controllist) {
-                        DRW_Coord c2{cp->x, cp->y, 0.0};
+                        DRW_Coord c2{cp.x, cp.y, 0.0};
                         buf->put2RawDouble(c2);
                         if (isRational)
-                            buf->putBitDouble(cp->z);  // weight stored in z
+                            buf->putBitDouble(cp.z);  // weight stored in z
                     }
                     // Fit points + start/end tangents (R2010+). The reader
                     // unconditionally consumes this block for version>AC1021
@@ -6086,7 +6086,7 @@ bool DRW_Hatch::encodeDwg(DRW::Version version, dwgBufferW *buf, std::uint32_t b
                     if (version > DRW::AC1021) { //2010+
                         buf->putBitLong(static_cast<std::int32_t>(sp->fitlist.size()));
                         for (const auto& fp : sp->fitlist) {
-                            DRW_Coord f2{fp->x, fp->y, 0.0};
+                            DRW_Coord f2{fp.x, fp.y, 0.0};
                             buf->put2RawDouble(f2);
                         }
                         buf->put2RawDouble(sp->tgStart);
@@ -6105,16 +6105,16 @@ bool DRW_Hatch::encodeDwg(DRW::Version version, dwgBufferW *buf, std::uint32_t b
 
             bool asBulge = false;
             for (const auto& v : pl->vertlist)
-                if (v->bulge != 0.0) { asBulge = true; break; }
+                if (v.bulge != 0.0) { asBulge = true; break; }
 
             buf->putBit(static_cast<std::uint8_t>(asBulge));
             buf->putBit(static_cast<std::uint8_t>(pl->flags & 1));  // closed bit
             buf->putBitLong(static_cast<std::int32_t>(pl->vertlist.size()));
             for (const auto& v : pl->vertlist) {
-                buf->putRawDouble(v->x);
-                buf->putRawDouble(v->y);
+                buf->putRawDouble(v.x);
+                buf->putRawDouble(v.y);
                 if (asBulge)
-                    buf->putBitDouble(v->bulge);
+                    buf->putBitDouble(v.bulge);
             }
         }
 
@@ -6203,8 +6203,8 @@ bool DRW_Spline::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
         tolfit = reader->getDouble();
         break;
     case 10: {
-        controlpoint = std::make_shared<DRW_Coord>();
-        controllist.push_back(controlpoint);
+        controllist.emplace_back();
+        controlpoint = &controllist.back();
         controlpoint->x = reader->getDouble();
         break; }
     case 20:
@@ -6216,8 +6216,8 @@ bool DRW_Spline::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
             controlpoint->z = reader->getDouble();
         break;
     case 11: {
-        fitpoint = std::make_shared<DRW_Coord>();
-        fitlist.push_back(fitpoint);
+        fitlist.emplace_back();
+        fitpoint = &fitlist.back();
         fitpoint->x = reader->getDouble();
         break; }
     case 21:
@@ -6344,7 +6344,7 @@ bool DRW_Spline::parseDwgSplineBody(DRW::Version version, dwgBuffer *buf){
         return false;
     }
     for (std::int32_t i= 0; i<ncontrol; ++i){
-        controllist.push_back(std::make_shared<DRW_Coord>(buf->get3BitDouble()));
+        controllist.push_back(buf->get3BitDouble());
         if (weight) {
             //per-control-point weight; required for hyperbola/parabola
             //conic detection in consumers (e.g. LibreCAD addSpline)
@@ -6357,7 +6357,7 @@ bool DRW_Spline::parseDwgSplineBody(DRW::Version version, dwgBuffer *buf){
         return false;
     }
     for (std::int32_t i= 0; i<nfit; ++i)
-        fitlist.push_back(std::make_shared<DRW_Coord>(buf->get3BitDouble()));
+        fitlist.push_back(buf->get3BitDouble());
 
     if (DRW_DBGGL == DRW_dbg::Level::Debug) {
         DRW_DBG("\nknots list: ");
@@ -6366,11 +6366,11 @@ bool DRW_Spline::parseDwgSplineBody(DRW::Version version, dwgBuffer *buf){
         }
         DRW_DBG("\ncontrol point list: ");
         for (auto const& v: controllist) {
-            DRW_DBG("\n"); DRW_DBGPT(v->x, v->y, v->z);
+            DRW_DBG("\n"); DRW_DBGPT(v.x, v.y, v.z);
         }
         DRW_DBG("\nfit point list: ");
         for (auto const& v: fitlist) {
-            DRW_DBG("\n"); DRW_DBGPT(v->x, v->y, v->z);
+            DRW_DBG("\n"); DRW_DBGPT(v.x, v.y, v.z);
         }
     }
 
