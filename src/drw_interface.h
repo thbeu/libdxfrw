@@ -266,6 +266,12 @@ public:
     /** Called for every 3DSOLID entity (provides entity properties). */
     virtual void add3dSolid(const DRW_Entity& data) { (void)data; }
 
+    /** Called for entities with proxy graphics (code 160/310) like MESH, BODY, REGION.
+     *  Provides entity properties + decoded proxy graphics bytes. */
+    virtual void addProxyGraphics(const DRW_Entity& data, const std::vector<unsigned char>& graphics) {
+        (void)data; (void)graphics;
+    }
+
     /** Called for ACDSRECORD ASM_Data (SAB binary linked to an entity handle). */
     virtual void addAcdsData(const std::string& entityHandle, const std::vector<unsigned char>& data) { (void)entityHandle; (void)data; }
 

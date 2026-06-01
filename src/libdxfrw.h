@@ -143,6 +143,8 @@ private:
     bool processText();
     bool processAttdef();
     bool process3dSolid();
+    bool processProxyEntity();
+    bool processMLineStyle();
     bool processMText();
     bool processMLine();
     bool processUnderlay(const std::string& kind);

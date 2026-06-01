@@ -2786,6 +2786,12 @@ bool dxfRW::processEntities(bool isblock) {
             processed = processAttdef();
         } else if (nextentity == "3DSOLID") {
             processed = process3dSolid();
+        } else if (nextentity == "MESH" || nextentity == "BODY"
+                   || nextentity == "REGION" || nextentity == "SURFACE"
+                   || nextentity == "PLANESURFACE" || nextentity == "EXTRUDEDSURFACE"
+                   || nextentity == "REVOLVEDSURFACE" || nextentity == "SWEPTSURFACE"
+                   || nextentity == "LOFTEDSURFACE") {
+            processed = processProxyEntity();
         } else if (nextentity == "MTEXT") {
             processed = processMText();
         } else if (nextentity == "MLINE") {
@@ -3498,6 +3504,9 @@ bool dxfRW::processObjects() {
         else if ("PLOTSETTINGS" == nextentity) {
             processed = processPlotSettings();
         }
+        else if ("MLINESTYLE" == nextentity) {
+            processed = processMLineStyle();
+        }
         else {
             if (!reader->readRec(&code)) {
                 return setError(DRW::BAD_READ_OBJECTS); //end of file without ENDSEC
@@ -3553,6 +3562,52 @@ bool dxfRW::processPlotSettings() {
         }
     }
 
+    return setError(DRW::BAD_READ_OBJECTS);
+}
+
+bool dxfRW::processMLineStyle() {
+    DRW_DBG("dxfRW::processMLineStyle\n");
+    int code;
+    DRW_MLineStyle style;
+    while (reader->readRec(&code)) {
+        DRW_DBG(code); DRW_DBG("\n");
+        if (0 == code) {
+            nextentity = reader->getString();
+            DRW_DBG(nextentity); DRW_DBG("\n");
+            iface->addMLineStyle(style);
+            return true;
+        }
+        switch (code) {
+            case 2: style.name = reader->getString(); break;
+            case 70: style.flags = reader->getInt32(); break;
+            case 3: style.description = reader->getString(); break;
+            case 51: style.startAngle = reader->getDouble(); break;
+            case 52: style.endAngle = reader->getDouble(); break;
+            case 71: /* numElements, we size from code 49 entries */ reader->getInt32(); break;
+            case 62:
+                if (!style.elements.empty())
+                    style.elements.back().color = reader->getInt32();
+                else
+                    style.fillColor = reader->getInt32();
+                break;
+            case 49: {
+                DRW_MLineElement el;
+                el.offset = reader->getDouble();
+                style.elements.push_back(el);
+                break;
+            }
+            case 6:
+                if (!style.elements.empty())
+                    style.elements.back().linetype = reader->getString();
+                else
+                    reader->getString();
+                break;
+            default:
+                // Skip unknown codes (handle, reactors, etc.)
+                reader->getString();
+                break;
+        }
+    }
     return setError(DRW::BAD_READ_OBJECTS);
 }
 
@@ -3624,15 +3679,77 @@ bool dxfRW::process3dSolid() {
     DRW_DBG("dxfRW::process3dSolid");
     int code;
     DRW_Point ent;
+    std::string hexGraphics;
     while (reader->readRec(&code)) {
         DRW_DBG(code); DRW_DBG("\n");
         if (0 == code) {
             nextentity = reader->getString();
             DRW_DBG(nextentity); DRW_DBG("\n");
+            if (!hexGraphics.empty()) {
+                std::vector<unsigned char> bytes;
+                bytes.reserve(hexGraphics.size() / 2);
+                for (size_t i = 0; i + 1 < hexGraphics.size(); i += 2) {
+                    auto hv = [](char c) -> unsigned char {
+                        if (c >= '0' && c <= '9') return (unsigned char)(c - '0');
+                        if (c >= 'A' && c <= 'F') return (unsigned char)(c - 'A' + 10);
+                        if (c >= 'a' && c <= 'f') return (unsigned char)(c - 'a' + 10);
+                        return 0;
+                    };
+                    bytes.push_back((unsigned char)((hv(hexGraphics[i]) << 4) | hv(hexGraphics[i + 1])));
+                }
+                iface->addProxyGraphics(ent, bytes);
+            }
             iface->add3dSolid(ent);
             return true;
         }
-        if (!ent.parseCode(code, reader)) {
+        if (code == 310) {
+            hexGraphics += reader->getString();
+        } else if (code == 160) {
+            (void)reader->getInt64();
+        } else if (code == 92) {
+            (void)reader->getInt32();
+        } else if (!ent.parseCode(code, reader)) {
+            return setError(DRW::BAD_CODE_PARSED);
+        }
+    }
+    return setError(DRW::BAD_READ_ENTITIES);
+}
+
+bool dxfRW::processProxyEntity() {
+    DRW_DBG("dxfRW::processProxyEntity");
+    int code;
+    DRW_Point ent;
+    std::string hexGraphics;
+    while (reader->readRec(&code)) {
+        DRW_DBG(code); DRW_DBG("\n");
+        if (0 == code) {
+            nextentity = reader->getString();
+            DRW_DBG(nextentity); DRW_DBG("\n");
+            if (!hexGraphics.empty()) {
+                std::vector<unsigned char> bytes;
+                bytes.reserve(hexGraphics.size() / 2);
+                for (size_t i = 0; i + 1 < hexGraphics.size(); i += 2) {
+                    auto hv = [](char c) -> unsigned char {
+                        if (c >= '0' && c <= '9') return (unsigned char)(c - '0');
+                        if (c >= 'A' && c <= 'F') return (unsigned char)(c - 'A' + 10);
+                        if (c >= 'a' && c <= 'f') return (unsigned char)(c - 'a' + 10);
+                        return 0;
+                    };
+                    bytes.push_back((unsigned char)((hv(hexGraphics[i]) << 4) | hv(hexGraphics[i + 1])));
+                }
+                iface->addProxyGraphics(ent, bytes);
+            }
+            return true;
+        }
+        if (code == 310) {
+            hexGraphics += reader->getString();
+        } else if (code == 160) {
+            // proxy graphics size (already read as int64 by readRec)
+            (void)reader->getInt64();
+        } else if (code == 92) {
+            // alternate proxy graphics size marker (int32)
+            (void)reader->getInt32();
+        } else if (!ent.parseCode(code, reader)) {
             return setError(DRW::BAD_CODE_PARSED);
         }
     }
