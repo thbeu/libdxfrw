@@ -1196,6 +1196,18 @@ bool dxfRW::writeHatch(DRW_Hatch *ent){
             writer->writeDouble(41, ent->scale);
             writer->writeInt16(77, ent->doubleflag);
             writer->writeInt16(78, ent->deflines);
+            // Write pattern definition lines (groups 53, 43, 44, 45, 46, 79, 49)
+            for (const DRW_Hatch::PatternLine &pl : ent->patternLines) {
+                writer->writeDouble(53, pl.angle);
+                writer->writeDouble(43, pl.baseX);
+                writer->writeDouble(44, pl.baseY);
+                writer->writeDouble(45, pl.offsetX);
+                writer->writeDouble(46, pl.offsetY);
+                writer->writeInt16(79, pl.numDashes);
+                for (int d = 0; d < pl.numDashes; ++d) {
+                    writer->writeDouble(49, pl.dashes[d]);
+                }
+            }
         }
         // Seed points (group 98 = count, then 10/20 pairs).
         const int seedCount = static_cast<int>(ent->seedPoints.size());
