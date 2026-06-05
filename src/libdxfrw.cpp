@@ -1115,7 +1115,22 @@ bool dxfRW::writeHatch(DRW_Hatch *ent){
             DRW_HatchLoop *loop = ent->looplist.at(i).get();
             writer->writeInt16(92, loop->type);
             if ( (loop->type & 2) == 2){
-                //RLZ: polyline boundary writeme
+                // Polyline boundary — the DRW_LWPolyline lives in objlist[0]
+                DRW_LWPolyline* pl = static_cast<DRW_LWPolyline*>(loop->objlist.at(0).get());
+                // Determine as_bulge: 1 if any vertex carries a non-zero bulge
+                int asBulge = 0;
+                for (const auto& v : pl->vertlist) {
+                    if (v.bulge != 0.0) { asBulge = 1; break; }
+                }
+                writer->writeInt16(72, asBulge);            // as_bulge flag
+                writer->writeInt16(73, pl->flags);          // closed flag (bit 0)
+                writer->writeInt16(93, pl->vertlist.size());// vertex count
+                for (const auto& v : pl->vertlist) {
+                    writer->writeDouble(10, v.x);
+                    writer->writeDouble(20, v.y);
+                    if (asBulge)
+                        writer->writeDouble(42, v.bulge);
+                }
             } else {
                 //boundary path
                 loop->update();
@@ -3549,7 +3564,7 @@ bool dxfRW::processImageDef() {
         }
 
         if (!img.parseCode(code, reader)) {
-            return setError( DRW::BAD_CODE_PARSED);
+            return setError(DRW::BAD_CODE_PARSED);
         }
     }
 
@@ -3570,7 +3585,7 @@ bool dxfRW::processPlotSettings() {
         }
 
         if (!ps.parseCode(code, reader)) {
-            return setError( DRW::BAD_CODE_PARSED);
+            return setError(DRW::BAD_CODE_PARSED);
         }
     }
 
