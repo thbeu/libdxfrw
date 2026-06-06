@@ -5957,11 +5957,16 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
             while (pl.angle < 0)        pl.angle += 360.0;
             while (pl.angle >= 360.0)   pl.angle -= 360.0;
 
-            // Base point: rotate from world frame to pattern frame
+            // Base point: rotate from world frame to pattern frame, then
+            // divide by scale so addHatch() can apply scale uniformly.
             double rawBaseX = buf->getBitDouble();
             double rawBaseY = buf->getBitDouble();
             pl.baseX =  rawBaseX * cosH + rawBaseY * sinH;
             pl.baseY = -rawBaseX * sinH + rawBaseY * cosH;
+            if (scale > 1e-10) {
+                pl.baseX /= scale;
+                pl.baseY /= scale;
+            }
 
             // Offset: rotate from world frame to pattern frame, then
             // divide by scale so addHatch() can apply scale uniformly.
@@ -6159,11 +6164,11 @@ bool DRW_Hatch::encodeDwg(DRW::Version version, dwgBufferW *buf, std::uint32_t b
             // (absolute = relative + hatch angle) and convert to radians.
             double absAngle = pl.angle + angle;
             buf->putBitDouble(absAngle * (M_PI / 180.0));
-            // Rotate base point from pattern frame back to world frame
-            double worldBaseX = pl.baseX * cosH - pl.baseY * sinH;
-            double worldBaseY = pl.baseX * sinH + pl.baseY * cosH;
-            buf->putBitDouble(worldBaseX);
-            buf->putBitDouble(worldBaseY);
+            // Multiply base by scale, then rotate pattern→world
+            double patBaseX = pl.baseX * scale;
+            double patBaseY = pl.baseY * scale;
+            buf->putBitDouble(patBaseX * cosH - patBaseY * sinH);
+            buf->putBitDouble(patBaseX * sinH + patBaseY * cosH);
             // Multiply offset by scale, then rotate pattern→world
             double patOffX = pl.offsetX * scale;
             double patOffY = pl.offsetY * scale;
