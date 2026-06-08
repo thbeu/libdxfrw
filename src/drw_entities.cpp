@@ -3553,6 +3553,15 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
                     arc->staangle = buf->getBitDouble();
                     arc->endangle = buf->getBitDouble();
                     arc->isccw = buf->getBit();
+                    if (!arc->isccw) {
+                        // DWG stores real angles for CW arcs; convert to
+                        // complementary (matching DXF convention) so that
+                        // arc endpoints connect seamlessly to adjacent
+                        // boundary entities.
+                        double tmp = 2.0 * M_PI - arc->endangle;
+                        arc->endangle = 2.0 * M_PI - arc->staangle;
+                        arc->staangle = tmp;
+                    }
                 } else if (typePath == 3){ //ellipse arc
                     addEllipse();
                     ellipse->basePoint = buf->get2RawDouble();
@@ -3561,6 +3570,12 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
                     ellipse->staparam = buf->getBitDouble();
                     ellipse->endparam = buf->getBitDouble();
                     ellipse->isccw = buf->getBit();
+                    if (!ellipse->isccw) {
+                        // Same complementary-angle conversion as arcs.
+                        double tmp = 2.0 * M_PI - ellipse->endparam;
+                        ellipse->endparam = 2.0 * M_PI - ellipse->staparam;
+                        ellipse->staparam = tmp;
+                    }
                 } else if (typePath == 4){ //spline
                     addSpline();
                     spline->degree = buf->getBitLong();
@@ -3756,17 +3771,35 @@ bool DRW_Hatch::encodeDwg(DRW::Version version, dwgBufferW *buf, duint32 bs) {
                     buf->putRawChar8(2);  // circular arc
                     buf->put2RawDouble(arc->basePoint);
                     buf->putBitDouble(arc->radius);
-                    buf->putBitDouble(arc->staangle);   // radians
-                    buf->putBitDouble(arc->endangle);
-                    buf->putBit(static_cast<duint8>(arc->isccw));
+                    if (arc->isccw) {
+                        buf->putBitDouble(arc->staangle);
+                        buf->putBitDouble(arc->endangle);
+                        buf->putBit(static_cast<duint8>(1));
+                    } else {
+                        // isccw=0 means angles are complementary; convert
+                        // back to real angles for DWG format.
+                        double sa = 2.0 * M_PI - arc->endangle;
+                        double ea = 2.0 * M_PI - arc->staangle;
+                        buf->putBitDouble(sa);
+                        buf->putBitDouble(ea);
+                        buf->putBit(static_cast<duint8>(0));
+                    }
                 } else if (const auto* el = dynamic_cast<const DRW_Ellipse*>(seg.get())) {
                     buf->putRawChar8(3);  // ellipse arc
                     buf->put2RawDouble(el->basePoint);
                     buf->put2RawDouble(el->secPoint);
                     buf->putBitDouble(el->ratio);
-                    buf->putBitDouble(el->staparam);
-                    buf->putBitDouble(el->endparam);
-                    buf->putBit(static_cast<duint8>(el->isccw));
+                    if (el->isccw) {
+                        buf->putBitDouble(el->staparam);
+                        buf->putBitDouble(el->endparam);
+                        buf->putBit(static_cast<duint8>(1));
+                    } else {
+                        double sa = 2.0 * M_PI - el->endparam;
+                        double ea = 2.0 * M_PI - el->staparam;
+                        buf->putBitDouble(sa);
+                        buf->putBitDouble(ea);
+                        buf->putBit(static_cast<duint8>(0));
+                    }
                 } else if (const auto* sp = dynamic_cast<const DRW_Spline*>(seg.get())) {
                     buf->putRawChar8(4);  // spline
                     buf->putBitLong(sp->degree);
