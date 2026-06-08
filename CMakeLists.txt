@@ -20,7 +20,7 @@ include(GNUInstallDirs)
 
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # SOURCE FILES
@@ -30,6 +30,10 @@ set(libdxfrw_srcs
   src/intern/dwgbuffer.cpp
   src/intern/dwgbufferw.cpp
   src/intern/dwgwriter15.cpp
+  src/intern/dwgwriter18.cpp
+  src/intern/dwgwriter24.cpp
+  src/intern/dwgwriter27.cpp
+  src/intern/dwgwriter32.cpp
   src/intern/dwgreader.cpp
   src/intern/dwgreader15.cpp
   src/intern/dwgreader18.cpp
@@ -63,6 +67,10 @@ set(libdxfrw_hdrs
   src/intern/dwgbufferw.h
   src/intern/dwgwriter.h
   src/intern/dwgwriter15.h
+  src/intern/dwgwriter18.h
+  src/intern/dwgwriter24.h
+  src/intern/dwgwriter27.h
+  src/intern/dwgwriter32.h
   src/intern/dwgreader.h
   src/intern/dwgreader15.h
   src/intern/dwgreader18.h
@@ -96,7 +104,7 @@ set_target_properties(dxfrw PROPERTIES
 	SOVERSION "${PROJECT_VERSION_MAJOR}"
 	EXPORT_NAME libdxfrw
 )
-target_compile_features(dxfrw PUBLIC cxx_std_14)
+target_compile_features(dxfrw PUBLIC cxx_std_17)
 target_include_directories(dxfrw
 		PUBLIC
 			$<INSTALL_INTERFACE:${LIBDXFRW_INSTALL_INCLUDEDIR}>
