@@ -99,6 +99,7 @@ void dx_iface::writeEntity(DRW_Entity* e){
     case DRW::TEXT:
         dxfW->writeText(static_cast<DRW_Text*>(e));
         break;
+    case DRW::DIMENSION:
     case DRW::DIMLINEAR:
     case DRW::DIMALIGNED:
     case DRW::DIMANGULAR:
@@ -116,6 +117,15 @@ void dx_iface::writeEntity(DRW_Entity* e){
         break;
     case DRW::IMAGE:
         dxfW->writeImage(static_cast<DRW_Image*>(e), static_cast<dx_ifaceImg*>(e)->path);
+        break;
+    case DRW::VIEWPORT:
+        dxfW->writeViewport(static_cast<DRW_Viewport*>(e));
+        break;
+    case DRW::XLINE:
+        dxfW->writeXline(static_cast<DRW_Xline*>(e));
+        break;
+    case DRW::RAY:
+        dxfW->writeRay(static_cast<DRW_Ray*>(e));
         break;
     default:
         break;

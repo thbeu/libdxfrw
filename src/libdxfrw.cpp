@@ -1709,7 +1709,26 @@ bool dxfRW::writeDimension(DRW_Dimension *ent) {
         writer->writeDouble(220, ent->getExtrusion().y);
         writer->writeDouble(230, ent->getExtrusion().z);
 
-        switch (ent->eType) {
+        // Determine effective sub-type for the switch below.
+        // DRW::DIMENSION (generic) can occur when entities were copied via
+        // DRW_Dimension's copy constructor which overwrites eType.  Use the
+        // type field (bits 0-2) to recover the actual sub-type.
+        DRW::ETYPE dimSubType = ent->eType;
+        if (dimSubType == DRW::DIMENSION) {
+            static const DRW::ETYPE dimTypeMap[7] = {
+                DRW::DIMLINEAR,      // 0 = rotated
+                DRW::DIMALIGNED,     // 1 = aligned
+                DRW::DIMANGULAR,     // 2 = angular 2-line
+                DRW::DIMDIAMETRIC,   // 3 = diameter
+                DRW::DIMRADIAL,      // 4 = radius
+                DRW::DIMANGULAR3P,   // 5 = angular 3-point
+                DRW::DIMORDINATE     // 6 = ordinate
+            };
+            int rawType = ent->type & 0x07;
+            if (rawType >= 0 && rawType <= 6)
+                dimSubType = dimTypeMap[rawType];
+        }
+        switch (dimSubType) {
         case DRW::DIMALIGNED:
         case DRW::DIMLINEAR: {
             DRW_DimAligned * dd = (DRW_DimAligned*)ent;
@@ -4410,7 +4429,7 @@ bool dxfRW::processDimension() {
         if (0 == code) {
             nextentity = reader->getString();
             DRW_DBG(nextentity); DRW_DBG("\n");
-            int type = dim.type & 0x0F;
+            int type = dim.type & 0x07; // bits 0-2 = dimension type; bit 3+ are flags
             switch (type) {
             case 0: {
                 DRW_DimLinear d(dim);
