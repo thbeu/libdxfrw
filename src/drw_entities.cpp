@@ -5972,36 +5972,25 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
             while (pl.angle < 0)        pl.angle += 360.0;
             while (pl.angle >= 360.0)   pl.angle -= 360.0;
 
-            // Base point: rotate from world frame to pattern frame, then
-            // divide by scale so addHatch() can apply scale uniformly.
+            // Base point: rotate from world frame to pattern frame.
+            // DWG stores base/offset/dashes pre-scaled by the hatch scale
+            // factor, just like DXF.  We only need the rotation.
             double rawBaseX = buf->getBitDouble();
             double rawBaseY = buf->getBitDouble();
             pl.baseX =  rawBaseX * cosH + rawBaseY * sinH;
             pl.baseY = -rawBaseX * sinH + rawBaseY * cosH;
-            if (scale > 1e-10) {
-                pl.baseX /= scale;
-                pl.baseY /= scale;
-            }
 
-            // Offset: rotate from world frame to pattern frame, then
-            // divide by scale so addHatch() can apply scale uniformly.
+            // Offset: rotate from world frame to pattern frame.
             double rawOffX = buf->getBitDouble();
             double rawOffY = buf->getBitDouble();
-            double patOffX =  rawOffX * cosH + rawOffY * sinH;
-            double patOffY = -rawOffX * sinH + rawOffY * cosH;
-            if (scale > 1e-10) {
-                patOffX /= scale;
-                patOffY /= scale;
-            }
-            pl.offsetX = patOffX;
-            pl.offsetY = patOffY;
+            pl.offsetX =  rawOffX * cosH + rawOffY * sinH;
+            pl.offsetY = -rawOffX * sinH + rawOffY * cosH;
 
             std::uint16_t numDashL = buf->getBitShort();
             DRW_DBG("\ndef line: "); DRW_DBG(pl.angle); DRW_DBG(","); DRW_DBG(pl.baseX); DRW_DBG(","); DRW_DBG(pl.baseY);
             DRW_DBG(","); DRW_DBG(pl.offsetX); DRW_DBG(","); DRW_DBG(pl.offsetY); DRW_DBG(","); DRW_DBG(pl.angle);
             for (std::uint16_t j = 0 ; j < numDashL; ++j){
                 double lengthL = buf->getBitDouble();
-                if (scale > 1e-10) lengthL /= scale;
                 pl.dashList.push_back(lengthL);
                 DRW_DBG(","); DRW_DBG(lengthL);
             }
@@ -6189,7 +6178,10 @@ bool DRW_Hatch::encodeDwg(DRW::Version version, dwgBufferW *buf, std::uint32_t b
         buf->putBitDouble(scale);
         buf->putBit(static_cast<std::uint8_t>(doubleflag));
         buf->putBitShort(static_cast<std::uint16_t>(patternLines.size()));
-        // Pre-compute hatch rotation for pattern→world frame conversion
+        // Pre-compute hatch rotation for pattern→world frame conversion.
+        // Pattern lines in patternLines are pre-scaled by the hatch scale
+        // factor (just like DXF).  We only need to rotate into the world
+        // frame; the DWG writer stores values pre-scaled.
         double hatchRad = angle * M_PI / 180.0;
         double cosH = cos(hatchRad), sinH = sin(hatchRad);
         for (const auto& pl : patternLines) {
@@ -6197,19 +6189,14 @@ bool DRW_Hatch::encodeDwg(DRW::Version version, dwgBufferW *buf, std::uint32_t b
             // (absolute = relative + hatch angle) and convert to radians.
             double absAngle = pl.angle + angle;
             buf->putBitDouble(absAngle * (M_PI / 180.0));
-            // Multiply base by scale, then rotate pattern→world
-            double patBaseX = pl.baseX * scale;
-            double patBaseY = pl.baseY * scale;
-            buf->putBitDouble(patBaseX * cosH - patBaseY * sinH);
-            buf->putBitDouble(patBaseX * sinH + patBaseY * cosH);
-            // Multiply offset by scale, then rotate pattern→world
-            double patOffX = pl.offsetX * scale;
-            double patOffY = pl.offsetY * scale;
-            buf->putBitDouble(patOffX * cosH - patOffY * sinH);
-            buf->putBitDouble(patOffX * sinH + patOffY * cosH);
+            // Rotate pattern→world (values are already pre-scaled)
+            buf->putBitDouble( pl.baseX * cosH - pl.baseY * sinH);
+            buf->putBitDouble( pl.baseX * sinH + pl.baseY * cosH);
+            buf->putBitDouble( pl.offsetX * cosH - pl.offsetY * sinH);
+            buf->putBitDouble( pl.offsetX * sinH + pl.offsetY * cosH);
             buf->putBitShort(static_cast<std::uint16_t>(pl.dashList.size()));
             for (double d : pl.dashList) {
-                buf->putBitDouble(d * scale);
+                buf->putBitDouble(d);
             }
         }
     }
