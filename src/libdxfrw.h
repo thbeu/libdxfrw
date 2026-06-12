@@ -257,6 +257,7 @@ private:
     bool processSolid();
     bool processInsert();
     bool processAttrib(DRW_Insert* insert);
+    bool processAcadTable();
     bool processLWPolyline();
     bool processPolyline();
     bool processVertex(DRW_Polyline* pl);
