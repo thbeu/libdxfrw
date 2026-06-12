@@ -1285,6 +1285,7 @@ public:
         alignV = (VAlign)TopLeft;
         textgen = 1;
         hasXAxisVec = false; // if true need to calculate angle from secPoint vector
+        inEmbeddedObject = false;
     }
 
 protected:
@@ -1320,6 +1321,7 @@ public:
     std::vector<double> m_r2018ColumnHeights;
 private:
     bool hasXAxisVec; /* renamed by djm for better description */
+    bool inEmbeddedObject; /*!< true after code 101 "Embedded Object" - skip duplicate codes */
 };
 
 //! Class to handle vertex
