@@ -3568,15 +3568,6 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
                     arc->staangle = buf->getBitDouble();
                     arc->endangle = buf->getBitDouble();
                     arc->isccw = buf->getBit();
-                    if (!arc->isccw) {
-                        // DWG stores real angles for CW arcs; convert to
-                        // complementary (matching DXF convention) so that
-                        // arc endpoints connect seamlessly to adjacent
-                        // boundary entities.
-                        double tmp = 2.0 * M_PI - arc->endangle;
-                        arc->endangle = 2.0 * M_PI - arc->staangle;
-                        arc->staangle = tmp;
-                    }
                 } else if (typePath == 3){ //ellipse arc
                     addEllipse();
                     ellipse->basePoint = buf->get2RawDouble();
@@ -3585,12 +3576,6 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
                     ellipse->staparam = buf->getBitDouble();
                     ellipse->endparam = buf->getBitDouble();
                     ellipse->isccw = buf->getBit();
-                    if (!ellipse->isccw) {
-                        // Same complementary-angle conversion as arcs.
-                        double tmp = 2.0 * M_PI - ellipse->endparam;
-                        ellipse->endparam = 2.0 * M_PI - ellipse->staparam;
-                        ellipse->staparam = tmp;
-                    }
                 } else if (typePath == 4){ //spline
                     addSpline();
                     spline->degree = buf->getBitLong();
@@ -3662,38 +3647,28 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
         angle = buf->getBitDouble() * (180.0 / M_PI);   // DWG stores radians; DXF uses degrees
         scale = buf->getBitDouble();
         doubleflag = buf->getBit();
-        // Pre-compute the hatch rotation for world→pattern frame conversion.
-        // DXF stores pattern-line angles relative to the hatch rotation and
-        // offsets/base-points in the pattern coordinate frame.  DWG stores
-        // absolute angles (radians) and offset/base in world coordinates,
-        // both pre-scaled by the hatch scale factor.  We only need to
-        // rotate angles, base points, and offsets into the pattern frame;
-        // the pre-scaling is kept so addHatch() can handle both formats
-        // identically (addHatch does NOT multiply by patScale).
-        double hatchRad = angle * M_PI / 180.0;
-        double cosH = cos(hatchRad), sinH = sin(hatchRad);
+        // DWG stores absolute angles (radians) and offset/base in world
+        // coordinates, both pre-scaled by the hatch scale factor.  DXF
+        // also stores absolute (pre-rotated) angles and world-frame
+        // offset/base.  Both formats now share the same convention, so
+        // we store them directly without any rotation.  addHatch() uses
+        // them as-is (no patAngle addition or rotation needed).
+        double hatchRad = angle * M_PI / 180.0;  // unused but kept for ABI
+        (void)hatchRad;
 
         deflines = buf->getBitShort();
         for (dint32 i = 0 ; i < deflines; ++i){
             PatternLine pl;
-            // DWG absolute angle (radians) → DXF relative angle (degrees)
-            pl.angle = buf->getBitDouble() * (180.0 / M_PI) - angle;
-            while (pl.angle < 0)        pl.angle += 360.0;
-            while (pl.angle >= 360.0)   pl.angle -= 360.0;
+            // Store absolute angle in degrees (no subtraction)
+            pl.angle = buf->getBitDouble() * (180.0 / M_PI);
 
-            // Base point: rotate from world frame to pattern frame.
-            // DWG stores base/offset/dashes pre-scaled by the hatch scale
-            // factor, just like DXF.  We only need the rotation.
-            double rawBaseX = buf->getBitDouble();
-            double rawBaseY = buf->getBitDouble();
-            pl.baseX =  rawBaseX * cosH + rawBaseY * sinH;
-            pl.baseY = -rawBaseX * sinH + rawBaseY * cosH;
+            // Base point: store directly in world frame (no rotation)
+            pl.baseX = buf->getBitDouble();
+            pl.baseY = buf->getBitDouble();
 
-            // Offset: rotate from world frame to pattern frame.
-            double rawOffX = buf->getBitDouble();
-            double rawOffY = buf->getBitDouble();
-            pl.offsetX =  rawOffX * cosH + rawOffY * sinH;
-            pl.offsetY = -rawOffX * sinH + rawOffY * cosH;
+            // Offset: store directly in world frame (no rotation)
+            pl.offsetX = buf->getBitDouble();
+            pl.offsetY = buf->getBitDouble();
 
             duint16 numDashL = buf->getBitShort();
             pl.numDashes = numDashL;
@@ -3701,6 +3676,7 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, duint32 bs){
             DRW_DBG(","); DRW_DBG(pl.offsetX); DRW_DBG(","); DRW_DBG(pl.offsetY); DRW_DBG(","); DRW_DBG(pl.angle);
             for (duint16 j = 0 ; j < numDashL; ++j){
                 double lengthL = buf->getBitDouble();
+                // Dashes are pre-scaled (no division by scale)
                 pl.dashes.push_back(lengthL);
                 DRW_DBG(","); DRW_DBG(lengthL);
             }
@@ -3777,35 +3753,17 @@ bool DRW_Hatch::encodeDwg(DRW::Version version, dwgBufferW *buf, duint32 bs) {
                     buf->putRawChar8(2);  // circular arc
                     buf->put2RawDouble(arc->basePoint);
                     buf->putBitDouble(arc->radius);
-                    if (arc->isccw) {
-                        buf->putBitDouble(arc->staangle);
-                        buf->putBitDouble(arc->endangle);
-                        buf->putBit(static_cast<duint8>(1));
-                    } else {
-                        // isccw=0 means angles are complementary; convert
-                        // back to real angles for DWG format.
-                        double sa = 2.0 * M_PI - arc->endangle;
-                        double ea = 2.0 * M_PI - arc->staangle;
-                        buf->putBitDouble(sa);
-                        buf->putBitDouble(ea);
-                        buf->putBit(static_cast<duint8>(0));
-                    }
+                    buf->putBitDouble(arc->staangle);   // radians
+                    buf->putBitDouble(arc->endangle);
+                    buf->putBit(static_cast<duint8>(arc->isccw));
                 } else if (const auto* el = dynamic_cast<const DRW_Ellipse*>(seg.get())) {
                     buf->putRawChar8(3);  // ellipse arc
                     buf->put2RawDouble(el->basePoint);
                     buf->put2RawDouble(el->secPoint);
                     buf->putBitDouble(el->ratio);
-                    if (el->isccw) {
-                        buf->putBitDouble(el->staparam);
-                        buf->putBitDouble(el->endparam);
-                        buf->putBit(static_cast<duint8>(1));
-                    } else {
-                        double sa = 2.0 * M_PI - el->endparam;
-                        double ea = 2.0 * M_PI - el->staparam;
-                        buf->putBitDouble(sa);
-                        buf->putBitDouble(ea);
-                        buf->putBit(static_cast<duint8>(0));
-                    }
+                    buf->putBitDouble(el->staparam);
+                    buf->putBitDouble(el->endparam);
+                    buf->putBit(static_cast<duint8>(el->isccw));
                 } else if (const auto* sp = dynamic_cast<const DRW_Spline*>(seg.get())) {
                     buf->putRawChar8(4);  // spline
                     buf->putBitLong(sp->degree);
@@ -3861,24 +3819,22 @@ bool DRW_Hatch::encodeDwg(DRW::Version version, dwgBufferW *buf, duint32 bs) {
         buf->putBitDouble(scale);
         buf->putBit(static_cast<duint8>(doubleflag));
         buf->putBitShort(static_cast<duint16>(patternLines.size()));
-        // Pre-compute hatch rotation for pattern→world frame conversion.
-        // Pattern lines in patternLines are pre-scaled by the hatch scale
-        // factor (just like DXF).  We only need to rotate into the world
-        // frame; the DWG writer stores values pre-scaled.
+        // Pre-compute hatch rotation for pattern→world frame conversion
         double hatchRad = angle * M_PI / 180.0;
         double cosH = cos(hatchRad), sinH = sin(hatchRad);
         for (const auto& pl : patternLines) {
-            // Reverse the parseDwg normalisation: add the hatch angle back
-            // (absolute = relative + hatch angle) and convert to radians.
-            double absAngle = pl.angle + angle;
-            buf->putBitDouble(absAngle * (M_PI / 180.0));
-            // Rotate pattern→world (values are already pre-scaled)
-            buf->putBitDouble( pl.baseX * cosH - pl.baseY * sinH);
-            buf->putBitDouble( pl.baseX * sinH + pl.baseY * cosH);
-            buf->putBitDouble( pl.offsetX * cosH - pl.offsetY * sinH);
-            buf->putBitDouble( pl.offsetX * sinH + pl.offsetY * cosH);
+            // pl.angle is already absolute (degrees, world-frame).  Convert
+            // to radians for DWG format — no hatch-angle addition needed.
+            buf->putBitDouble(pl.angle * (M_PI / 180.0));
+            // Base point is already in world-frame, pre-scaled.
+            buf->putBitDouble(pl.baseX);
+            buf->putBitDouble(pl.baseY);
+            // Offset is already in world-frame, pre-scaled.
+            buf->putBitDouble(pl.offsetX);
+            buf->putBitDouble(pl.offsetY);
             buf->putBitShort(static_cast<duint16>(pl.dashes.size()));
             for (double d : pl.dashes) {
+                // Dashes are pre-scaled; write directly.
                 buf->putBitDouble(d);
             }
         }
