@@ -913,6 +913,7 @@ public:
         alignV = (VAlign)TopLeft;
         textgen = 1;
         hasXAxisVec = false; // if true need to calculate angle from secPoint vector
+        inEmbeddedObject = false;
     }
 
 protected:
@@ -925,6 +926,7 @@ public:
     double interlin;     /*!< width factor, code 44 */
 private:
     bool hasXAxisVec; /* renamed by djm for better description */
+    bool inEmbeddedObject; /*!< true after code 101 "Embedded Object" - skip duplicate codes */
 };
 
 //! Class to handle vertex

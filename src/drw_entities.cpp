@@ -2877,6 +2877,21 @@ bool DRW_Attdef::encodeDwg(DRW::Version version, dwgBufferW *buf, duint32 bs) {
 }
 
 bool DRW_MText::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
+    // DXF R2018+: group code 101 "Embedded Object" may appear after the
+    // MTEXT data.  Codes 10/20/30 and 11/21/31 inside it overwrite basePoint
+    // and secPoint, causing a spurious rotation.  Skip all duplicate codes.
+    if (code == 101) {
+        // The value ("Embedded Object") was already consumed by readInt16() in
+        // readRec(); we just flag the start of the embedded block.
+        inEmbeddedObject = true;
+        return true;
+    }
+    if (inEmbeddedObject) {
+        if (code < 1000)
+            return true;
+        // XDATA starts (1001+) -- leave Embedded Object scope
+        inEmbeddedObject = false;
+    }
     switch (code) {
     case 1:
         text += reader->getString();
