@@ -2870,6 +2870,8 @@ bool dxfRW::processEntities(bool isblock) {
             processed = processRay();
         } else if (nextentity == "XLINE") {
             processed = processXline();
+        } else if (nextentity == "ACAD_TABLE") {
+            processed = processAcadTable();
         } else {
             if (!reader->readRec(&code)) {
                 return setError(DRW::BAD_READ_ENTITIES); //end of file without ENDSEC
@@ -3175,6 +3177,33 @@ bool dxfRW::processInsert() {
         if (0 == code) {
            nextentity = reader->getString();
             DRW_DBG(nextentity); DRW_DBG("\n");
+            iface->addInsert(insert);
+            return true;  //found new entity or ENDSEC, terminate
+        }
+
+        if (!insert.parseCode(code, reader)) {
+            return setError( DRW::BAD_CODE_PARSED);
+        }
+    }
+
+    return setError(DRW::BAD_READ_ENTITIES);
+}
+
+bool dxfRW::processAcadTable() {
+    DRW_DBG("dxfRW::processAcadTable");
+    int code;
+    DRW_Insert insert;
+    // ACAD_TABLE entities embed an AcDbBlockReference with the visual
+    // representation (block containing lines, solids, mtext).  Parse the
+    // entity as an INSERT to extract the block name and insertion point.
+    while (reader->readRec(&code)) {
+        DRW_DBG(code); DRW_DBG("\n");
+        if (0 == code) {
+            nextentity = reader->getString();
+            DRW_DBG(nextentity); DRW_DBG("\n");
+            // Reset to layer "0" so BYBLOCK entities in *T12 don't
+            // inherit the ACAD_TABLE's layer color (ACI 40 = dark yellow).
+            insert.layer = "0";
             iface->addInsert(insert);
             return true;  //found new entity or ENDSEC, terminate
         }

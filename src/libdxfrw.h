@@ -137,6 +137,7 @@ private:
     bool processTrace();
     bool processSolid();
     bool processInsert();
+    bool processAcadTable();
     bool processLWPolyline();
     bool processPolyline();
     bool processVertex(DRW_Polyline* pl);
