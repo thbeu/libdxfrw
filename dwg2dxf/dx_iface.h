@@ -152,9 +152,12 @@ public:
         currentBlock->ent.push_back(new dx_ifaceImg(*data));
         cData->images.push_back(img);
     }
+    virtual void addDimArc(const DRW_DimArc *data){
+        currentBlock->ent.push_back(new DRW_DimArc(*data));
+    }
 
     virtual void linkImage(const DRW_ImageDef *data){
-        duint32 handle = data->handle;
+        std::uint32_t handle = data->handle;
         std::string path(data->name);
         for (std::list<dx_ifaceImg*>::iterator it=cData->images.begin(); it != cData->images.end(); ++it){
             if ((*it)->ref == handle){
