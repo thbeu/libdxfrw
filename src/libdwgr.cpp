@@ -94,7 +94,7 @@ bool dwgRW::testReader(){
     }
 
     dwgBuffer fileBuf(&filestr);
-    std::uint8_t *tmpStrData = new std::uint8_t[fileBuf.size()];
+    std::uint8_t *tmpStrData = new std::uint8_t[static_cast<size_t>(fileBuf.size())];
     fileBuf.getBytes(tmpStrData, fileBuf.size());
     dwgBuffer dataBuf(tmpStrData, fileBuf.size());
     fileBuf.setPosition(0);

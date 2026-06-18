@@ -265,7 +265,7 @@ bool dwgReader18::parseDataPage(const dwgSectionInfo &si/*, std::uint8_t *dData*
             DRW_DBG("parseDataPage: compressed page extends past end of file\n");
             return false;
         }
-        std::vector<std::uint8_t> cData(pi.cSize);
+        std::vector<std::uint8_t> cData(static_cast<size_t>(pi.cSize));
         if (!fileBuf->setPosition(pi.address + 32)) {
             return false;
         }
