@@ -5532,21 +5532,36 @@ bool DRW_Hatch::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
         patternLines.back().angle = reader->getDouble();
         break;
     case 43:
-        if (!patternLines.empty()) patternLines.back().baseX = reader->getDouble();
+        if (!patternLines.empty())
+            patternLines.back().baseX = reader->getDouble();
+        else
+            return DRW_Point::parseCode(code, reader);
         break;
     case 44:
-        if (!patternLines.empty()) patternLines.back().baseY = reader->getDouble();
+        if (!patternLines.empty())
+            patternLines.back().baseY = reader->getDouble();
+        else
+            return DRW_Point::parseCode(code, reader);
         break;
     case 45:
-        if (!patternLines.empty()) patternLines.back().offsetX = reader->getDouble();
+        if (!patternLines.empty())
+            patternLines.back().offsetX = reader->getDouble();
+        else
+            return DRW_Point::parseCode(code, reader);
         break;
     case 46:
-        if (!patternLines.empty()) patternLines.back().offsetY = reader->getDouble();
+        if (!patternLines.empty())
+            patternLines.back().offsetY = reader->getDouble();
+        else
+            return DRW_Point::parseCode(code, reader);
         break;
     case 79: // dash count — the 49s that follow will accumulate
         break;
     case 49:
-        if (!patternLines.empty()) patternLines.back().dashList.push_back(reader->getDouble());
+        if (!patternLines.empty())
+            patternLines.back().dashList.push_back(reader->getDouble());
+        else
+            return DRW_Point::parseCode(code, reader);
         break;
     case 73:
         // Spline edge: 73 is the rational flag (1 = rational).
