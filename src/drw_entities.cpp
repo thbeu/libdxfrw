@@ -5066,10 +5066,16 @@ bool DRW_MText::parseCode(int code, const std::unique_ptr<dxfReader>& reader){
         return true;
     }
     if (inEmbeddedObject) {
-        if (code < 1000)
+        if (code == 0) {
+            // Entity ends — leave Embedded Object scope so processMText
+            // sees the code 0 and terminates the entity.
+            inEmbeddedObject = false;
+        } else if (code < 1000) {
             return true;
-        // XDATA starts (1001+) -- leave Embedded Object scope
-        inEmbeddedObject = false;
+        } else {
+            // XDATA starts (1001+) — leave Embedded Object scope
+            inEmbeddedObject = false;
+        }
     }
     switch (code) {
     case 1:
