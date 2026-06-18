@@ -150,7 +150,7 @@ bool dwgRSCodec::decode251I(unsigned char *in, unsigned char *out, std::uint32_t
 
 // Decode state is now instance state (declared + initialized in dwgutil.h).
 
-std::uint32_t dwgCompressor::twoByteOffset(std::uint32_t *ll){
+std::uint32_t dwgCompressor::twoByteOffset(std::uint64_t *ll){
     std::uint32_t cont = 0;
     std::uint8_t fb = compressedByte();
     cont = (fb >> 2) | (compressedByte() << 6);
@@ -222,9 +222,9 @@ bool dwgCompressor::decompress18(std::uint8_t *cbuf, std::uint8_t *dbuf, std::ui
     DRW_DBG("dwgCompressor::decompress, last 2 bytes: ");
     DRW_DBGH(compressedBuffer[compressedSize - 2]);DRW_DBG(" ");DRW_DBGH(compressedBuffer[compressedSize - 1]);DRW_DBG("\n");
 
-    std::uint32_t compBytes {0};
+    std::uint64_t compBytes {0};
     std::uint32_t compOffset {0};
-    std::uint32_t litCount {litLength18()};
+    std::uint64_t litCount {litLength18()};
 
     //copy first literal length
     for (std::uint32_t i = 0; i < litCount && buffersGood(); ++i) {
@@ -305,8 +305,8 @@ bool dwgCompressor::decompress18(std::uint8_t *cbuf, std::uint8_t *dbuf, std::ui
             // only copy what we can fit
             compBytes = decompSize - decompPos;
         }
-        std::uint32_t j {decompPos - compOffset - 1};
-        for (std::uint32_t i = 0; i < compBytes && buffersGood(); i++) {
+        std::uint64_t j {decompPos - compOffset - 1};
+        for (std::uint64_t i = 0; i < compBytes && buffersGood(); i++) {
             decompSet( decompByte( j++));
         }
 
@@ -317,7 +317,7 @@ bool dwgCompressor::decompress18(std::uint8_t *cbuf, std::uint8_t *dbuf, std::ui
             // only copy what we can fit
             litCount = decompSize - decompPos;
         }
-        for (std::uint32_t i=0; i < litCount && buffersGood(); i++) {
+        for (std::uint64_t i=0; i < litCount && buffersGood(); i++) {
             decompSet( compressedByte());
         }
     }
@@ -345,7 +345,7 @@ std::uint8_t dwgCompressor::compressedByte(void)
     return result;
 }
 
-std::uint8_t dwgCompressor::compressedByte(const std::uint32_t index)
+std::uint8_t dwgCompressor::compressedByte(const std::uint64_t index)
 {
     if (index < compressedSize) {
         return compressedBuffer[index];
@@ -367,7 +367,7 @@ bool dwgCompressor::compressedInc(const std::int32_t inc /*= 1*/)
     return compressedGood;
 }
 
-std::uint8_t dwgCompressor::decompByte(const std::uint32_t index)
+std::uint8_t dwgCompressor::decompByte(const std::uint64_t index)
 {
     if (index < decompSize) {
         return decompBuffer[index];
@@ -426,10 +426,10 @@ std::uint32_t dwgUtil::crc32(std::uint32_t seed, const std::uint8_t* data, std::
 }
 
 void dwgCompressor::decrypt18Hdr(std::uint8_t *buf, std::uint64_t size, std::uint64_t offset){
-    std::uint8_t max = size / 4;
-    std::uint32_t secMask = 0x4164536b ^ offset;
+    std::uint64_t max = size / 4;
+    std::uint32_t secMask = 0x4164536b ^ static_cast<std::uint32_t>(offset);
     std::uint32_t* pHdr = reinterpret_cast<std::uint32_t*>(buf);
-    for (std::uint8_t j = 0; j < max; j++)
+    for (std::uint64_t j = 0; j < max; j++)
         *pHdr++ ^= secMask;
 }
 
@@ -497,18 +497,18 @@ bool dwgCompressor::decompress21(std::uint8_t *cbuf, std::uint8_t *dbuf, std::ui
                 DRW_DBG("\nWARNING dwgCompressor::decompress21 => sourceOffset> dstIndex.\n");
                 DRW_DBG("csize = "); DRW_DBG(compressedSize); DRW_DBG("  srcIndex = "); DRW_DBG(compressedPos);
                 DRW_DBG("\ndsize = "); DRW_DBG(decompSize); DRW_DBG("  dstIndex = "); DRW_DBG(decompPos);
-                sourceOffset = decompPos;
+                sourceOffset = static_cast<std::uint32_t>(decompPos);
             }
             //prevent crash with corrupted data
             if (length > decompSize - decompPos){
                 DRW_DBG("\nWARNING dwgCompressor::decompress21 => length > dsize - dstIndex.\n");
                 DRW_DBG("csize = "); DRW_DBG(compressedSize); DRW_DBG("  srcIndex = "); DRW_DBG(compressedPos);
                 DRW_DBG("\ndsize = "); DRW_DBG(decompSize); DRW_DBG("  dstIndex = "); DRW_DBG(decompPos);
-                length = decompSize - decompPos;
+                length = static_cast<std::uint32_t>(decompSize - decompPos);
                 compressedPos = compressedSize; //force exit
                 compressedGood = false;
             }
-            sourceOffset = decompPos - sourceOffset;
+            sourceOffset = static_cast<std::uint32_t>(decompPos) - sourceOffset;
             for (std::uint32_t i=0; i< length; i++)
                 decompSet( decompByte( sourceOffset + i));
 

@@ -827,7 +827,7 @@ DRW_DBG("\n***************************** parsing table entry *******************
         DRW_DBG(" Object size: "); DRW_DBG(objSize); DRW_DBG("\n");
     }
     if (version > DRW::AC1021) {//2010+
-        std::uint32_t ms = buf->size();
+        std::uint32_t ms = static_cast<std::uint32_t>(buf->size());
         if (bs > ms*8u)
             return false;
         objSize = ms*8 - bs;
@@ -867,7 +867,7 @@ DRW_DBG("\n***************************** parsing table entry *******************
         if (!buf->getBytes(tmpExtData.data(), extDataSize))
             return false;
         dwgBuffer tmpExtDataBuf(tmpExtData.data(), extDataSize, buf->decoder);
-        int pos = tmpExtDataBuf.getPosition();
+        std::uint64_t pos = tmpExtDataBuf.getPosition();
         int bpos = tmpExtDataBuf.getBitPos();
         DRW_DBG("ext data pos: "); DRW_DBG(pos); DRW_DBG("."); DRW_DBG(bpos); DRW_DBG("\n");
         std::uint8_t dxfCode = tmpExtDataBuf.getRawChar8();

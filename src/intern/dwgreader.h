@@ -111,9 +111,9 @@ public:
     dwgSectionInfo()=default;
     std::int32_t Id{-1}; //section Id, 2000-   rd15 rd18
     std::string name; //section name rd18
-    std::uint32_t compressed{1};//is compressed? 1=no, 2=yes rd18, rd21(encoding)
-    std::uint32_t encrypted{0};//encrypted (doc: 0=no, 1=yes, 2=unkn) on read: objects 0 and encrypted yes rd18
-    std::unordered_map<std::uint32_t, dwgPageInfo >pages;//index, size, offset
+    std::uint64_t compressed{1};//is compressed? 1=no, 2=yes rd18, rd21(encoding)
+    std::uint64_t encrypted{0};//encrypted (doc: 0=no, 1=yes, 2=unkn) on read: objects 0 and encrypted yes rd18
+    std::unordered_map<std::uint64_t, dwgPageInfo >pages;//index, size, offset
     std::uint64_t size{0};//size of section,  2000- rd15, rd18, rd21 (data size)
     std::uint64_t pageCount{0}; //number of pages (dwgPageInfo) in section rd18, rd21
     std::uint64_t maxSize{0}; //max decompressed size (needed??) rd18 rd21

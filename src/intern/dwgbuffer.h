@@ -86,7 +86,7 @@ public:
     void resetPosition(){setPosition(0); setBitPos(0);}
     void setBitPos(std::uint8_t pos);
     std::uint8_t getBitPos() const {return bitPos;}
-    bool moveBitPos(std::int32_t size);
+    bool moveBitPos(std::int64_t size);
     void setVariableTextByteLength(bool enabled) { variableTextByteLength = enabled; }
 
     std::uint8_t getBit();  //B
@@ -115,7 +115,7 @@ public:
     UTF8STRING getVariableText(DRW::Version v, bool nullTerm = true); //TV => call TU for 2007+ or T for previous versions
     UTF8STRING getCP8Text(); //T 8 bit text converted from codepage to utf8
     UTF8STRING getUCSText(bool nullTerm = true); //TU unicode 16 bit (UCS) text converted to utf8
-    UTF8STRING getUCSStr(std::uint16_t ts);
+    UTF8STRING getUCSStr(std::uint32_t ts);
 
     std::uint16_t getObjType(DRW::Version v);  //OT
 
@@ -153,9 +153,9 @@ public:
 
     bool isGood() const {return filestr->good();}
     bool getBytes(std::uint8_t *buf, std::uint64_t size);
-    int numRemainingBytes() const {return (maxSize- filestr->getPos());}
+    std::int64_t numRemainingBytes() const {return (maxSize- filestr->getPos());}
 
-    std::uint16_t crc8(std::uint16_t dx,std::int32_t start,std::int32_t end);
+    std::uint16_t crc8(std::uint16_t dx,std::int64_t start,std::int64_t end);
     std::uint32_t crc32(std::uint32_t seed,std::int32_t start,std::int32_t end);
 
 //    std::uint8_t getCurrByte(){return currByte;}
@@ -195,7 +195,7 @@ private:
     bool variableTextByteLength{false};
 
     UTF8STRING get8bitStr();
-    UTF8STRING get16bitStr(std::uint16_t textSize, bool nullTerm = true);
+    UTF8STRING get16bitStr(std::uint32_t textSize, bool nullTerm = true);
 };
 
 #endif // DWGBUFFER_H

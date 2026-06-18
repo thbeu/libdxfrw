@@ -1097,7 +1097,7 @@ bool DRW_Entity::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer* strBu
         DRW_DBG(" Object size: "); DRW_DBG(objSize); DRW_DBG("\n");
     }
     if (version > DRW::AC1021) {//2010+
-        std::uint32_t ms = buf->size();
+        std::uint32_t ms = static_cast<std::uint32_t>(buf->size());
         // Clamp: a corrupt bs > ms*8 would underflow objSize (unsigned) to a
         // huge value and drive strBuf->moveBitPos(objSize-1) past the buffer.
         objSize = (bs <= ms*8u) ? ms*8u - bs : 0u;
@@ -1161,8 +1161,8 @@ bool DRW_Entity::parseDwg(DRW::Version version, dwgBuffer *buf, dwgBuffer* strBu
                     std::uint16_t nChars = tmpExtDataBuf.getRawShort16();
                     if (nChars > 0) {
                         std::uint64_t byteLen = static_cast<std::uint64_t>(nChars) * 2;
-                        if ((std::uint64_t)tmpExtDataBuf.numRemainingBytes() < byteLen) break;
-                        std::vector<std::uint8_t> bytes(byteLen);
+                        if (tmpExtDataBuf.numRemainingBytes() < static_cast<std::int64_t>(byteLen)) break;
+                        std::vector<std::uint8_t> bytes(static_cast<size_t>(byteLen));
                         tmpExtDataBuf.getBytes(bytes.data(), byteLen);
                         // Inline UTF-16LE → UTF-8 conversion.
                         for (std::uint16_t i = 0; i < nChars; ++i) {
@@ -1576,7 +1576,7 @@ bool DRW_Entity::parseDwgEntHandle(DRW::Version version, dwgBuffer *buf, bool re
             }
         }
     }
-    const int rb = buf->numRemainingBytes();
+    const std::int64_t rb = buf->numRemainingBytes();
     DRW_DBG("\n DRW_Entity::parseDwgEntHandle Remaining bytes: "); DRW_DBG(rb); DRW_DBG("\n");
     if (rb > 4) {  // 2-byte CRC + slack
         DRW_DBG("\n*** parseDwgEntHandle leftover ");
@@ -4486,7 +4486,7 @@ static bool parseEmbeddedMTextDwg(DRW::Version version, dwgBuffer *buf,
 
     const std::uint16_t annotativeSize = buf->getBitShort();
     if (annotativeSize > 0) {
-        const int remaining = buf->numRemainingBytes();
+        const std::int64_t remaining = buf->numRemainingBytes();
         if (remaining < 0 || static_cast<std::uint64_t>(annotativeSize) > static_cast<std::uint64_t>(remaining))
             return false;
         std::vector<std::uint8_t> annotativeData(annotativeSize);
@@ -8084,7 +8084,7 @@ bool DRW_MLeader::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t b
             if (!safeHandle(bl.attDefHandle, "blocklabels.attdef"))     return true;
     }
 
-    const int rb = buf->numRemainingBytes();
+    const std::int64_t rb = buf->numRemainingBytes();
     DRW_DBG("\nMLEADER tail rb="); DRW_DBG(rb); DRW_DBG("\n");
     if (rb > 4) {
         DRW_DBG("MLEADER: handle-stream tail "); DRW_DBG(rb);

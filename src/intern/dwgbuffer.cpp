@@ -208,7 +208,7 @@ void dwgBuffer::setBitPos(std::uint8_t pos){
     bitPos = pos;
 }
 
-bool dwgBuffer::moveBitPos(std::int32_t size){
+bool dwgBuffer::moveBitPos(std::int64_t size){
     if (size == 0) return true;
 
     const std::uint64_t oldStreamPos = filestr->getPos();
@@ -593,11 +593,11 @@ std::string dwgBuffer::get8bitStr(){
 
 //internal since 2007 //pending: are 2 bytes null terminated??
 //nullTerm = true if string are 2 bytes null terminated from the stream
-std::string dwgBuffer::get16bitStr(std::uint16_t textSize, bool nullTerm){
+std::string dwgBuffer::get16bitStr(std::uint32_t textSize, bool nullTerm){
     if (textSize == 0)
         return std::string();
     textSize *=2;
-    std::uint16_t ts = textSize;
+    std::uint32_t ts = textSize;
     if (nullTerm)
         ts += 2;
     std::vector<std::uint8_t> tmpBuffer(static_cast<std::size_t>(textSize) + 2);
@@ -627,7 +627,7 @@ std::string dwgBuffer::getCP8Text(){
 /**Reads 2-bytes char (UCS2, NULL terminated) and convert to std::string (only for Latin-1)
    ts= total input size in bytes.
 **/
-std::string dwgBuffer::getUCSStr(std::uint16_t ts){
+std::string dwgBuffer::getUCSStr(std::uint32_t ts){
     std::string strData;
     if (ts<4) //at least 1 char
         return std::string();
@@ -907,7 +907,7 @@ bool dwgBuffer::getBytes(unsigned char *buf, std::uint64_t size){
     return true;
 }
 
-std::uint16_t dwgBuffer::crc8(std::uint16_t dx,std::int32_t start,std::int32_t end){
+std::uint16_t dwgBuffer::crc8(std::uint16_t dx,std::int64_t start,std::int64_t end){
     // Guard against a negative/empty byte range from a corrupt section size:
     // `new std::uint8_t[end-start]` would compute a negative size (huge size_t).
     // An empty fold leaves the seed unchanged, so return dx.
@@ -915,8 +915,8 @@ std::uint16_t dwgBuffer::crc8(std::uint16_t dx,std::int32_t start,std::int32_t e
         return dx;
     std::uint64_t pos = filestr->getPos();
     filestr->setPos(start);
-    int n = end-start;
-    std::vector<std::uint8_t> tmpBuf(n);
+    std::int64_t n = end-start;
+    std::vector<std::uint8_t> tmpBuf(static_cast<size_t>(n));
     std::uint8_t *p = tmpBuf.data();
     filestr->read (tmpBuf.data(),n);
     filestr->setPos(pos);
