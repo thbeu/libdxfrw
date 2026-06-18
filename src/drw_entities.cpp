@@ -5915,12 +5915,6 @@ bool DRW_Hatch::parseDwg(DRW::Version version, dwgBuffer *buf, std::uint32_t bs)
                 DRW_DBG(","); DRW_DBG(lengthL);
             }
             patternLines.push_back(pl);
-                double lengthL = buf->getBitDouble();
-                if (scale > 1e-10) lengthL /= scale;
-                pl.dashes.push_back(lengthL);
-                DRW_DBG(","); DRW_DBG(lengthL);
-            }
-            patternLines.push_back(pl);
         }//end deflines
     } //end not solid
 
