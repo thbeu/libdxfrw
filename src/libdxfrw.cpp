@@ -3052,8 +3052,12 @@ bool dxfRW::processClasses() {
         if (!reading)
             return true;
         if (cls.recName.empty() || cls.className.empty()) {
-            DRW_DBG("malformed CLASS record: missing record/class name\n");
-            return false;
+            // Some DXF files (e.g. BricsCAD) emit CLASS records with an empty
+            // record name (code 1).  The CLASSES section is non-essential
+            // metadata for a viewer, so skip the record rather than aborting.
+            DRW_DBG("malformed CLASS record: missing record/class name - skipped\n");
+            reading = false;
+            return true;
         }
         iface->addDxfClass(cls);
         return true;
