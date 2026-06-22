@@ -19,6 +19,7 @@
 #include "intern/drw_dbg.h"
 #include "intern/drw_textcodec.h"
 #include "intern/dwgreader.h"
+#include "intern/dwgreaderR11.h"
 #include "intern/dwgwriter.h"
 #include "intern/dwgwriter15.h"
 #include "intern/dwgwriter18.h"
@@ -874,7 +875,7 @@ bool dwgRW::writeRawDwgSection(const DRW_RawDwgSection *section) {
 std::unique_ptr<dwgReader> dwgRW::createReaderForVersion(DRW::Version version, std::ifstream *stream, dwgRW *p )
 {
     switch ( version ) {
-       // unsupported
+       // unsupported (pre-R10 — no shared parser exists)
        case DRW::UNKNOWNV:
        case DRW::MC00:
        case DRW::AC12:
@@ -884,9 +885,13 @@ std::unique_ptr<dwgReader> dwgRW::createReaderForVersion(DRW::Version version, s
        case DRW::AC1002:
        case DRW::AC1003:
        case DRW::AC1004:
-       case DRW::AC1006:
-       case DRW::AC1009:
            break;
+       case DRW::AC1006:   // R10: shares the pre-R13 container with R11 (the one
+                           //      real format delta is a 1B LTYPE handle in the
+                           //      entity common header; dwgReaderR11 branches on
+                           //      `version`). dwgread DOES read AC1006.
+       case DRW::AC1009:   // R11: minimal read support (validatable vs dwgread)
+           return std::unique_ptr< dwgReader >( new dwgReaderR11( stream, p) );
 
        case DRW::AC1012:
        case DRW::AC1014:
